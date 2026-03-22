@@ -1,0 +1,381 @@
+// [Account](https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-3/README.md#value)
+// representation of ledgers supporting the ICRC-1 standard.
+type Account = record { owner : principal; subaccount : opt blob };
+// Arguments for registering a new reserve account.
+//
+// All fields mirror [`ReserveConfig`]; the minter assigns the numeric id.
+type AddReserveArg = record {
+	// Whether manual top-ups are permitted.
+	allow_manual_topup : bool;
+	// Guaranteed minimum total amount this reserve must receive from the
+	// minter over its lifetime.
+	lifetime_received_minimum : opt nat;
+	// Short human-readable label.
+	label : text;
+	// Whether the reserve starts active.
+	enabled : bool;
+	// Desired balance the minter aims to restore during rebalance.
+	target_balance : nat;
+	// Maximum amount the minter may mint in a single rebalance.
+	max_topup_per_rebalance : opt nat;
+	// The ICRC-1 account to register as a new reserve.
+	account : Account;
+	// Whether auto-rebalancing is permitted.
+	allow_auto_rebalance : bool;
+	// Balance threshold below which a rebalance is triggered.
+	min_balance : nat;
+	// Optional rate limits for this reserve.
+	rate_limits : opt RateLimits;
+	// Free-form description of the reserve's purpose.
+	purpose : text;
+	// Hard upper bound on the account's balance.
+	max_balance : opt nat;
+	// Hard cap on the total amount this reserve may ever receive.
+	lifetime_received_maximum : opt nat
+};
+// Outcome of registering a new reserve account.
+type AddReserveResult = variant {
+	// Successfully registered; contains the newly assigned reserve id.
+	Ok : nat64;
+	// Failed to register the reserve.
+	Err : MinterError
+};
+// Discriminated union passed to both `init` and `post_upgrade` hooks so the
+// canister knows whether it is being freshly installed or upgraded.
+type Arg = variant {
+	// Code upgrade; the canister restores state from stable memory.
+	Upgrade;
+	// First-time installation; carries the initial configuration.
+	Init : InitArg
+};
+// Outcome of retrieving a single reserve's information.
+type GetReserveResult = variant {
+	// Successfully retrieved the reserve information.
+	Ok : ReserveInfo;
+	// Failed to retrieve the reserve.
+	Err : MinterError
+};
+// Canister-wide policy flags that govern all minting operations.
+type GlobalPolicy = record {
+	// Master switch: when `false`, all minting (rebalance and manual) is
+	// rejected.
+	minting_enabled : bool;
+	// Optional cap on the amount that can be minted in any single
+	// operation (rebalance or manual top-up).
+	max_mint_per_operation : opt nat
+};
+// Arguments supplied when the minter canister is first installed.
+type InitArg = record {
+	// The principal of the ICRC-1 ledger canister this minter operates on.
+	ledger_id : principal
+};
+// Arguments for issuing an ad-hoc manual top-up to a reserve.
+type ManualTopupArg = record {
+	// Which reserve to top up.
+	reserve_id : nat64;
+	// Exact amount to mint to the reserve's account.
+	amount : nat;
+	// Optional caller-provided key for idempotent delivery.
+	//
+	// If the key already has a **completed** mint, the original response is returned.  If a
+	// mint with this key is **in progress**, the call fails with
+	// `MinterError::IdempotencyOperationInProgress`.  Concurrent mints to the same reserve
+	// fail with `MinterError::ReserveOperationInProgress` (whether or not a key is used).
+	idempotency_key : opt text
+};
+// Outcome of a manual top-up operation.
+type ManualTopupReserveResult = variant {
+	// Successfully minted the top-up.
+	Ok : ManualTopupResponse;
+	// Failed to mint the top-up.
+	Err : MinterError
+};
+// Successful response from a manual top-up operation.
+type ManualTopupResponse = record {
+	// Amount of tokens actually minted.
+	minted_amount : nat;
+	// Block index on the ledger where the mint was recorded.
+	ledger_block_index : nat;
+	// The reserve that was topped up.
+	reserve_id : nat64
+};
+// Errors surfaced as `Err` on methods whose return type includes `MinterError`.
+//
+// Controller and anonymity checks are enforced by `ic_cdk` update/query guards and reject the
+// call with a textual message before the handler runs; they do **not** map to these variants.
+// [`MinterError::NotAuthorized`] is kept for the Candid interface.
+type MinterError = variant {
+	// Another update is already minting to this reserve; wait and retry.
+	ReserveOperationInProgress : record { id : nat64 };
+	// The reserve or rate-limit configuration is invalid.
+	InvalidConfig : record { reason : text };
+	// The global policy has minting disabled.
+	MintingDisabled;
+	// Auto-rebalancing is not allowed for this reserve.
+	AutoRebalanceNotAllowed : record { id : nat64 };
+	// The targeted reserve is disabled.
+	ReserveDisabled : record { id : nat64 };
+	// Manual top-ups are not allowed for this reserve.
+	ManualTopupNotAllowed : record { id : nat64 };
+	// A reserve with this ICRC-1 account is already registered.
+	ReserveAccountAlreadyExists : record { account : Account };
+	// No reserve exists with the given id.
+	ReserveNotFound : record { id : nat64 };
+	// Reserved for the Candid interface; authorization failures use guard rejections instead.
+	NotAuthorized;
+	// Reserved for the Candid interface.  Manual top-ups replay completed keys via
+	// [`IdempotencyRecord::Completed`] without returning this error.
+	IdempotencyKeyAlreadyUsed : record {
+		// The key that collided.
+		key : text;
+		// Block index of the original mint.
+		existing_block_index : nat
+	};
+	// An error occurred while communicating with the ICRC-1 ledger.
+	LedgerError : record { message : text };
+	// The mint would exceed a sliding-window rate limit.
+	RateLimitExceeded : record {
+		// The amount that was requested.
+		requested : nat;
+		// Which time window was breached (e.g. "hour", "day").
+		window : text;
+		// How much has already been minted within the window.
+		current_usage : nat;
+		// The configured cap for that window.
+		limit : nat
+	};
+	// The requested mint amount exceeds a configured limit (per-operation
+	// policy cap or lifetime maximum).
+	AmountExceedsLimit : record { requested : nat; limit : nat };
+	// This idempotency key is tied to a mint that has not finished yet.
+	IdempotencyOperationInProgress : record { key : text };
+	// An internal consistency check failed (e.g. after a ledger mint).
+	InternalInvariantViolated : record { reason : text }
+};
+// Outcome of previewing a rebalance for a single reserve.
+type PreviewRebalanceReserveResult = variant {
+	// Successfully computed the preview.
+	Ok : PreviewRebalanceResponse;
+	// Failed to compute the preview.
+	Err : MinterError
+};
+// Preview of what a rebalance *would* do without actually minting.
+type PreviewRebalanceResponse = record {
+	// The action that would be taken.
+	action : RebalanceAction;
+	// Remaining rate-limit budget; `None` if no rate limits are configured.
+	rate_limit_budget : opt nat;
+	// Current balance of the reserve's account on the ledger.
+	current_balance : nat;
+	// Amount that would actually be minted (after all caps and rate limits).
+	would_mint : nat;
+	// The configured target balance.
+	target_balance : nat;
+	// Shortfall relative to `target_balance` (cyclical rebalancing need).
+	cyclical_deficit : nat;
+	// The reserve being previewed.
+	reserve_id : nat64;
+	// Shortfall relative to `lifetime_received_minimum`.
+	lifetime_deficit : nat
+};
+// Per-reserve rate-limit caps that restrict how many tokens can be minted
+// within sliding time windows.
+//
+// When multiple windows are configured, larger windows must be **strictly
+// more restrictive** (lower effective rate) than smaller ones.  This is
+// validated at creation and update time.
+type RateLimits = record {
+	// Maximum total amount mintable in any rolling 30-day window.
+	max_amount_per_month : opt nat;
+	// Maximum total amount mintable in any rolling 1-hour window.
+	max_amount_per_hour : opt nat;
+	// Maximum total amount mintable in any rolling 7-day window.
+	max_amount_per_week : opt nat;
+	// Maximum total amount mintable in any rolling 365-day window.
+	max_amount_per_year : opt nat;
+	// Maximum total amount mintable in any rolling 24-hour window.
+	max_amount_per_day : opt nat
+};
+// Outcome of a rebalance computation or execution.
+type RebalanceAction = variant {
+	// The rebalance was skipped for the stated reason.
+	Skipped : record { reason : text };
+	// The reserve already meets its target; no minting needed.
+	AlreadyFunded;
+	// Tokens were (or would be) minted to the reserve.
+	Minted
+};
+// Outcome of a rebalance operation on a single reserve.
+type RebalanceReserveResult = variant {
+	// Successfully executed the rebalance.
+	Ok : RebalanceResponse;
+	// Failed to execute the rebalance.
+	Err : MinterError
+};
+// Response from a rebalance operation on a single reserve.
+type RebalanceResponse = record {
+	// Amount of tokens that were actually minted (0 if nothing was minted).
+	minted_amount : nat;
+	// What happened during the rebalance.
+	action : RebalanceAction;
+	// Balance of the reserve's account before the rebalance.
+	balance_before : nat;
+	// Ledger block index of the mint transaction, if any.
+	ledger_block_index : opt nat;
+	// The reserve that was rebalanced.
+	reserve_id : nat64
+};
+// Clears a stuck per-reserve mint lock and optionally drops a pending
+// idempotency entry (controller-only recovery).
+type ReleaseStuckMintArg = record {
+	// Reserve id to remove from the in-flight mint lock set.
+	reserve_id : nat64;
+	// When set, removes this key only if it is still pending for `reserve_id`.
+	idempotency_key : opt text
+};
+// Outcome of clearing stuck mint / idempotency state.
+type ReleaseStuckMintResult = variant {
+	// Locks and/or pending idempotency entries were cleared.
+	Ok;
+	// Failed (e.g. idempotency key pending for another reserve).
+	Err : MinterError
+};
+// Outcome of removing a reserve.
+type RemoveReserveResult = variant {
+	// Successfully removed; contains the removed reserve's configuration.
+	Ok : AddReserveArg;
+	// Failed to remove the reserve.
+	Err : MinterError
+};
+// Read-only snapshot of a reserve returned by query methods.
+type ReserveInfo = record {
+	// Numeric identifier assigned by the minter.
+	id : nat64;
+	// Full configuration of the reserve (same Candid shape as [`crate::model::AddReserveArg`]).
+	config : AddReserveArg;
+	// Cumulative total of tokens minted to this reserve since creation.
+	lifetime_minted : nat
+};
+// Outcome of setting the global minting policy.
+type SetGlobalPolicyResult = variant {
+	// Successfully updated the global policy.
+	Ok;
+	// Failed to update the global policy.
+	Err : MinterError
+};
+// Arguments for partially updating an existing reserve's configuration.
+//
+// Every field except `id` is optional.  Omitted fields (`None`) are left
+// unchanged.  Fields wrapped in `Option<Option<T>>` support three states:
+// `None` = keep current, `Some(None)` = clear, `Some(Some(v))` = set to v.
+type UpdateReserveArg = record {
+	// Numeric identifier of the reserve to update.
+	id : nat64;
+	// Allow or disallow manual top-ups.
+	allow_manual_topup : opt bool;
+	// New lifetime minimum guarantee.  Can only increase, never decrease.
+	lifetime_received_minimum : opt nat;
+	// New label.
+	label : opt text;
+	// Enable or disable the reserve.
+	enabled : opt bool;
+	// New target balance, if changing.
+	target_balance : opt nat;
+	// New max topup per rebalance (triple-option: keep / clear / set).
+	max_topup_per_rebalance : opt opt nat;
+	// Allow or disallow auto-rebalancing.
+	allow_auto_rebalance : opt bool;
+	// New balance threshold, if changing.
+	min_balance : opt nat;
+	// New rate limits (triple-option: keep / clear / set).
+	rate_limits : opt opt RateLimits;
+	// New purpose description.
+	purpose : opt text;
+	// New max balance cap (triple-option: keep / clear / set).
+	max_balance : opt opt nat;
+	// New lifetime maximum cap (triple-option: keep / clear / set).
+	lifetime_received_maximum : opt opt nat
+};
+// Outcome of updating an existing reserve's configuration.
+type UpdateReserveResult = variant {
+	// Successfully updated the reserve.
+	Ok;
+	// Failed to update the reserve.
+	Err : MinterError
+};
+service : (Arg) -> {
+	// Registers a new reserve account.
+	//
+	// Validates the configuration, ensures no duplicate account exists,
+	// assigns a unique numeric id, and stores the reserve with zero lifetime
+	// counters and an empty mint-event history.
+	//
+	// Returns the newly assigned reserve id.
+	add_reserve : (AddReserveArg) -> (AddReserveResult);
+	// Returns the current canister-wide global minting policy.
+	get_global_policy : () -> (GlobalPolicy) query;
+	// Returns the principal of the ICRC-1 ledger canister this minter is
+	// connected to.
+	get_ledger_id : () -> (principal) query;
+	// Returns the configuration and lifetime counters for a single reserve.
+	//
+	// Returns `Err(MinterError::ReserveNotFound)` if no reserve with the
+	// given id exists.
+	get_reserve : (nat64) -> (GetReserveResult) query;
+	// Returns a list of all registered reserves with their configurations and
+	// lifetime minting counters.
+	list_reserves : () -> (vec ReserveInfo) query;
+	// Mints a specific amount to a reserve as an ad-hoc (manual) top-up.
+	//
+	// Unlike rebalancing, the caller specifies the exact amount.  The
+	// operation enforces:
+	//
+	// * Global policy (master enable, per-operation cap).
+	// * Reserve flags (`enabled`, `allow_manual_topup`).
+	// * Lifetime maximum cap.
+	// * Rate limits (hard rejection if exceeded).
+	// * Per-reserve mint lock: concurrent manual top-ups or rebalances to the same reserve return
+	// [`MinterError::ReserveOperationInProgress`].
+	// * Idempotency key: completed replays return the stored result; an in-flight key returns
+	// [`MinterError::IdempotencyOperationInProgress`].
+	manual_topup_reserve : (ManualTopupArg) -> (ManualTopupReserveResult);
+	// Previews the rebalance outcome for every registered reserve.
+	preview_rebalance_all_reserves : () -> (vec PreviewRebalanceReserveResult);
+	// Previews the rebalance outcome for a single reserve.
+	preview_rebalance_reserve : (nat64) -> (PreviewRebalanceReserveResult);
+	// Triggers a rebalance for every registered reserve, sequentially.
+	//
+	// Returns one result per reserve.  Individual failures do not prevent
+	// remaining reserves from being processed.
+	rebalance_all_reserves : () -> (vec RebalanceReserveResult);
+	// Triggers a rebalance for a single reserve by its id.
+	//
+	// Takes a per-reserve mint lock for the duration of the call.  If another update is already
+	// minting to this reserve, returns [`MinterError::ReserveOperationInProgress`].
+	rebalance_reserve : (nat64) -> (RebalanceReserveResult);
+	// Clears a stuck per-reserve mint lock and optionally removes a matching **pending**
+	// idempotency entry (e.g. after a trap between a successful ledger mint and state commit).
+	//
+	// Always removes `reserve_id` from the in-flight set.  If `idempotency_key` is set, removes that
+	// key only when it is still pending for the same `reserve_id`; otherwise returns
+	// `MinterError::InvalidConfig` if the key is pending for another reserve.
+	release_stuck_mint_state : (ReleaseStuckMintArg) -> (ReleaseStuckMintResult);
+	// Removes a reserve and returns its configuration.
+	//
+	// The reserve's lifetime counters and mint-event history are discarded.
+	// Fails with [`MinterError::ReserveOperationInProgress`] if a mint is in flight to this reserve
+	// or a manual idempotency entry is still **pending** for it.
+	remove_reserve : (nat64) -> (RemoveReserveResult);
+	// Replaces the canister-wide global minting policy.
+	set_global_policy : (GlobalPolicy) -> (SetGlobalPolicyResult);
+	// Partially updates the configuration of an existing reserve.
+	//
+	// Only fields present in the argument are changed; omitted fields keep
+	// their current values.  Special rules:
+	//
+	// * `lifetime_received_minimum` can only increase, never decrease.
+	// * `lifetime_received_maximum` and other `Option<Option<T>>` fields use the triple state: omit =
+	// keep, `null` = clear, value = set (see [`UpdateReserveArg`]).
+	// * The resulting configuration is re-validated before being persisted.
+	update_reserve : (UpdateReserveArg) -> (UpdateReserveResult)
+}

@@ -1,0 +1,24 @@
+{
+	"name": "vici-points",
+	"scripts": {
+		"build": "./scripts/build.sh",
+		"format": "prettier --write . && ./scripts/format.sh",
+		"format:rust": "./scripts/format.rust.sh",
+		"lint": "prettier --check . && ./scripts/lint.sh",
+		"lint:rust": "./scripts/lint.rust.sh --fix",
+		"quality": "npm run format && npm run lint",
+		"quality:rust": "npm run format:rust && npm run lint:rust",
+		"did": "./scripts/did.sh && npm run format && npm run lint",
+		"deploy": "dfx deploy --network local --upgrade-unchanged",
+		"deploy:prod": "dfx deploy --ic --upgrade-unchanged",
+		"reinstall:minter:prod": "DFX_NETWORK=ic ./scripts/build.minter.args.sh init && dfx canister install minter --mode reinstall --ic --argument-file ./out/build.minter.args.did --upgrade-unchanged",
+		"reinstall:ledger:prod": "DFX_NETWORK=ic ./scripts/build.ledger.args.sh init && dfx canister install ledger --mode reinstall --ic --argument-file ./out/build.ledger.args.did --upgrade-unchanged",
+		"reinstall:index:prod": "DFX_NETWORK=ic ./scripts/build.index.args.sh init && dfx canister install index --mode reinstall --ic --argument-file ./out/build.index.args.did --upgrade-unchanged"
+	},
+	"devDependencies": {
+		"@icp-sdk/bindgen": "^0.2.3",
+		"prettier": "^3.6.2",
+		"prettier-plugin-motoko": "^0.12.1",
+		"prettier-plugin-organize-imports": "^4.3.0"
+	}
+}
