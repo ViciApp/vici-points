@@ -1,8 +1,8 @@
 # Minter Canister
 
-The minter canister manages **reserve accounts** on the VICI ICRC-1 ledger. It is the ledger's designated minting account: only the minter can create new VICI tokens, and it does so exclusively for pre-approved system accounts called _reserves_.
+The minter canister manages **reserve accounts** on the Vici XP (VXP) ICRC-1 ledger. It is the ledger's designated minting account: only the minter can create new XP tokens, and it does so exclusively for pre-approved system accounts called _reserves_.
 
-No tokens are ever minted to arbitrary users. Every mint operation flows through the reserve system described below.
+No tokens are ever minted to arbitrary users. Every mint operation flows through the reserve system described below. The **app backend** holds funded reserve wallets and distributes XP to individual users based on gameplay logic — the minter does not know about individual users.
 
 ## Concepts
 
@@ -56,7 +56,7 @@ Each reserve can optionally define caps on how many tokens may be minted within 
 - Per month (30 d)
 - Per year (365 d)
 
-A validation rule enforces that **larger windows are strictly more restrictive** (lower effective rate) than smaller ones. For example, if the hourly limit is 100, the daily limit must be strictly less than 2 400 (100 \* 24).
+A validation rule enforces that **larger windows are strictly more restrictive** (lower effective rate) than smaller ones. For example, if the hourly limit is 100, the daily limit must be strictly less than 2,400 (100 \* 24).
 
 For automatic rebalances, rate limits act as a soft cap: the mint amount is reduced to fit within the budget. For manual top-ups, rate limits are a hard check: the request is rejected outright if it would exceed any window.
 

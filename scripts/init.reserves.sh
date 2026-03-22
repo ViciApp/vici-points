@@ -1,24 +1,17 @@
 #!/usr/bin/env bash
 #
-# Initialize minter reserves with per-bucket community sub-reserves.
+# Initialize minter reserves for Vici XP (gameplay token).
 #
-# Community 450M (45%) is split into six sub-reserves:
+# XP uses 6 gameplay-only reserves (no corporate allocations):
 #
-#   Bucket        Cap (VICI)  % of 45%  Auto-rebalance
-#   ─────────────────────────────────────────────────────
-#   forecast      135M        30%       yes
-#   liquidity     112.5M      25%       yes
-#   onboarding     67.5M      15%       yes
-#   oracle         67.5M      15%       yes
-#   campaign       45M        10%       yes
-#   buffer         22.5M       5%       no (manual only)
-#
-# Plus four non-community reserves (all manual only):
-#
-#   treasury      200M (20%)
-#   team          150M (15%)
-#   investors     150M (15%)
-#   advisors       50M  (5%)
+#   Bucket        Cap (XP)   %      Auto-rebalance
+#   ─────────────────────────────────────────────────
+#   forecast      400M       40%    yes
+#   onboarding    200M       20%    yes
+#   streaks       200M       20%    yes
+#   leaderboard   100M       10%    yes
+#   campaign       50M        5%    yes
+#   buffer         50M        5%    no (manual only)
 #
 # Auto-rebalancing reserves are configured with:
 #   - target_balance          = 7 days of daily emission budget
@@ -35,7 +28,7 @@
 #   - bash, dfx
 #   - Minter deployed; caller must be minter controller
 #
-# Supply ten unique ICRC-1 owner principals via environment variables.
+# Supply six unique ICRC-1 owner principals via environment variables.
 # See scripts/init.reserves.config.example.sh for the full list.
 #
 # Optional:
@@ -79,28 +72,14 @@ MULT="$(pow10 "${DECIMALS}")"
 # Caps — lifetime_received_maximum per reserve (base units)
 # ---------------------------------------------------------------------------
 
-# Community sub-reserves (must sum to 450M)
-CAP_FORECAST=$((135000000 * MULT))  # 30% of community
-CAP_LIQUIDITY=$((112500000 * MULT)) # 25% of community
-CAP_ONBOARDING=$((67500000 * MULT)) # 15% of community
-CAP_ORACLE=$((67500000 * MULT))     # 15% of community
-CAP_CAMPAIGN=$((45000000 * MULT))   # 10% of community
-CAP_BUFFER=$((22500000 * MULT))     #  5% of community
+CAP_FORECAST=$((400000000 * MULT))    # 40%
+CAP_ONBOARDING=$((200000000 * MULT))  # 20%
+CAP_STREAKS=$((200000000 * MULT))     # 20%
+CAP_LEADERBOARD=$((100000000 * MULT)) # 10%
+CAP_CAMPAIGN=$((50000000 * MULT))     #  5%
+CAP_BUFFER=$((50000000 * MULT))       #  5%
 
-COMMUNITY_SUM=$((CAP_FORECAST + CAP_LIQUIDITY + CAP_ONBOARDING + CAP_ORACLE + CAP_CAMPAIGN + CAP_BUFFER))
-EXPECTED_COMMUNITY=$((450000000 * MULT)) # 45% of total
-if [[ "${COMMUNITY_SUM}" -ne "${EXPECTED_COMMUNITY}" ]]; then
-  echo "ERROR: community sub-cap sum mismatch (${COMMUNITY_SUM} vs ${EXPECTED_COMMUNITY})." >&2
-  exit 1
-fi
-
-# Non-community reserves
-CAP_TREASURY=$((200000000 * MULT))  # 20% of total
-CAP_TEAM=$((150000000 * MULT))      # 15% of total
-CAP_INVESTORS=$((150000000 * MULT)) # 15% of total
-CAP_ADVISORS=$((50000000 * MULT))   #  5% of total
-
-TOTAL_CAP=$((COMMUNITY_SUM + CAP_TREASURY + CAP_TEAM + CAP_INVESTORS + CAP_ADVISORS))
+TOTAL_CAP=$((CAP_FORECAST + CAP_ONBOARDING + CAP_STREAKS + CAP_LEADERBOARD + CAP_CAMPAIGN + CAP_BUFFER))
 EXPECTED_TOTAL=$((1000000000 * MULT)) # 100%
 if [[ "${TOTAL_CAP}" -ne "${EXPECTED_TOTAL}" ]]; then
   echo "ERROR: total cap sum mismatch (${TOTAL_CAP} vs ${EXPECTED_TOTAL})." >&2
@@ -110,30 +89,26 @@ fi
 # ---------------------------------------------------------------------------
 # Daily emission budgets (whole tokens, for auto-rebalance config)
 #
-# Year 1-3 target: ~75M/year = ~205k/day total across all buckets.
+# Year 1-3 target: ~200M/year = ~548k XP/day total across all buckets.
 # ---------------------------------------------------------------------------
 
-DAILY_FORECAST=80000
-DAILY_LIQUIDITY=60000
-DAILY_ONBOARDING=30000
-DAILY_ORACLE=20000
-DAILY_CAMPAIGN=10000
+DAILY_FORECAST=220000
+DAILY_ONBOARDING=130000
+DAILY_STREAKS=110000
+DAILY_LEADERBOARD=55000
+DAILY_CAMPAIGN=33000
 
 # ---------------------------------------------------------------------------
-# Required environment variables (10 unique principals)
+# Required environment variables (6 unique principals)
 # ---------------------------------------------------------------------------
 
 ALL_VARS=(
-  VICI_RESERVE_PRINCIPAL_FORECAST
-  VICI_RESERVE_PRINCIPAL_LIQUIDITY
-  VICI_RESERVE_PRINCIPAL_ONBOARDING
-  VICI_RESERVE_PRINCIPAL_ORACLE
-  VICI_RESERVE_PRINCIPAL_CAMPAIGN
-  VICI_RESERVE_PRINCIPAL_BUFFER
-  VICI_RESERVE_PRINCIPAL_TREASURY
-  VICI_RESERVE_PRINCIPAL_TEAM
-  VICI_RESERVE_PRINCIPAL_INVESTORS
-  VICI_RESERVE_PRINCIPAL_ADVISORS
+  VXP_RESERVE_PRINCIPAL_FORECAST
+  VXP_RESERVE_PRINCIPAL_ONBOARDING
+  VXP_RESERVE_PRINCIPAL_STREAKS
+  VXP_RESERVE_PRINCIPAL_LEADERBOARD
+  VXP_RESERVE_PRINCIPAL_CAMPAIGN
+  VXP_RESERVE_PRINCIPAL_BUFFER
 )
 
 missing=()
@@ -145,7 +120,7 @@ done
 if [[ "${#missing[@]}" -gt 0 ]]; then
   echo "ERROR: unset environment variables: ${missing[*]}" >&2
   echo "" >&2
-  echo "Export all ten principals, or use scripts/init.reserves.config.sh." >&2
+  echo "Export all six principals, or use scripts/init.reserves.config.sh." >&2
   exit 1
 fi
 
@@ -181,7 +156,6 @@ fi
 # Reserve registration helpers
 # ---------------------------------------------------------------------------
 
-# Manual-only reserve (no auto-rebalance, no rate limits).
 call_add_manual_reserve() {
   local label="$1"
   local purpose="$2"
@@ -217,14 +191,6 @@ EOF
   "${dfx_base[@]}" call "${MINTER_CANISTER}" add_reserve "${candid}"
 }
 
-# Auto-rebalancing community sub-reserve.
-#
-# Derived parameters from daily_budget:
-#   target_balance          = daily_budget * 7 days  (1-week runway)
-#   min_balance             = daily_budget * 2 days  (refill trigger)
-#   max_topup_per_rebalance = target_balance         (full refill in one go)
-#   max_amount_per_day      = daily_budget * 2       (catch-up headroom)
-#   max_amount_per_year     = daily_budget * 365     (annual emission cap)
 call_add_auto_reserve() {
   local label="$1"
   local purpose="$2"
@@ -280,50 +246,32 @@ EOF
 echo "Network: ${DFX_NETWORK}, minter: ${MINTER_CANISTER}, decimals: ${DECIMALS}"
 echo ""
 
-echo "=== Community sub-reserves (auto-rebalance) ==="
+echo "=== Gameplay reserves (auto-rebalance) ==="
 call_add_auto_reserve "forecast" \
-  "Community: forecast rewards (30% of 45%)" \
-  "${VICI_RESERVE_PRINCIPAL_FORECAST}" "${CAP_FORECAST}" "${DAILY_FORECAST}"
-
-call_add_auto_reserve "liquidity" \
-  "Community: liquidity incentives (25% of 45%)" \
-  "${VICI_RESERVE_PRINCIPAL_LIQUIDITY}" "${CAP_LIQUIDITY}" "${DAILY_LIQUIDITY}"
+  "Gameplay: prediction participation rewards (40%)" \
+  "${VXP_RESERVE_PRINCIPAL_FORECAST}" "${CAP_FORECAST}" "${DAILY_FORECAST}"
 
 call_add_auto_reserve "onboarding" \
-  "Community: new user onboarding (15% of 45%)" \
-  "${VICI_RESERVE_PRINCIPAL_ONBOARDING}" "${CAP_ONBOARDING}" "${DAILY_ONBOARDING}"
+  "Gameplay: signup bonuses, activation, tutorials (20%)" \
+  "${VXP_RESERVE_PRINCIPAL_ONBOARDING}" "${CAP_ONBOARDING}" "${DAILY_ONBOARDING}"
 
-call_add_auto_reserve "oracle" \
-  "Community: market/oracle rewards (15% of 45%)" \
-  "${VICI_RESERVE_PRINCIPAL_ORACLE}" "${CAP_ORACLE}" "${DAILY_ORACLE}"
+call_add_auto_reserve "streaks" \
+  "Gameplay: daily engagement, login streaks (20%)" \
+  "${VXP_RESERVE_PRINCIPAL_STREAKS}" "${CAP_STREAKS}" "${DAILY_STREAKS}"
+
+call_add_auto_reserve "leaderboard" \
+  "Gameplay: leaderboard prizes, competitions (10%)" \
+  "${VXP_RESERVE_PRINCIPAL_LEADERBOARD}" "${CAP_LEADERBOARD}" "${DAILY_LEADERBOARD}"
 
 call_add_auto_reserve "campaign" \
-  "Community: ecosystem campaigns (10% of 45%)" \
-  "${VICI_RESERVE_PRINCIPAL_CAMPAIGN}" "${CAP_CAMPAIGN}" "${DAILY_CAMPAIGN}"
+  "Gameplay: promotions, referrals, events (5%)" \
+  "${VXP_RESERVE_PRINCIPAL_CAMPAIGN}" "${CAP_CAMPAIGN}" "${DAILY_CAMPAIGN}"
 
 echo ""
-echo "=== Community buffer (manual only) ==="
+echo "=== Buffer (manual only) ==="
 call_add_manual_reserve "buffer" \
-  "Community: strategic buffer (5% of 45%, manual only)" \
-  "${VICI_RESERVE_PRINCIPAL_BUFFER}" "${CAP_BUFFER}"
-
-echo ""
-echo "=== Non-community reserves (manual only) ==="
-call_add_manual_reserve "treasury" \
-  "Tokenomics: treasury (20% lifetime cap)" \
-  "${VICI_RESERVE_PRINCIPAL_TREASURY}" "${CAP_TREASURY}"
-
-call_add_manual_reserve "team" \
-  "Tokenomics: team allocation (15% lifetime cap)" \
-  "${VICI_RESERVE_PRINCIPAL_TEAM}" "${CAP_TEAM}"
-
-call_add_manual_reserve "investors" \
-  "Tokenomics: investors (15% lifetime cap)" \
-  "${VICI_RESERVE_PRINCIPAL_INVESTORS}" "${CAP_INVESTORS}"
-
-call_add_manual_reserve "advisors" \
-  "Tokenomics: advisors (5% lifetime cap)" \
-  "${VICI_RESERVE_PRINCIPAL_ADVISORS}" "${CAP_ADVISORS}"
+  "Gameplay: strategic buffer for future features (5%, manual only)" \
+  "${VXP_RESERVE_PRINCIPAL_BUFFER}" "${CAP_BUFFER}"
 
 echo ""
 echo "Done. Verify with: ${dfx_base[*]} call ${MINTER_CANISTER} list_reserves"

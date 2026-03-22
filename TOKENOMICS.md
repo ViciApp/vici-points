@@ -1,83 +1,96 @@
-# VICI tokenomics
+# Vici XP tokenomics
 
-This document describes the intended economic design for VICI. On-chain, VICI is an **ICRC** token: the ledger allows new supply to be created from the designated minting account. **Economic policy** therefore does not rely on a hard-coded fixed supply in the ledger; it relies on **how the minter is configured**—in particular [reserve accounts](src/minter/README.md) with **lifetime mint caps** and other limits.
+> [!TIP]
+> **Looking for the short version?** See the [TL;DR](TLDR.md) — reserves, emission rates, and the full flow in one page.
+
+This document describes the intended economic design for **Vici XP** (symbol: **VXP**), the gameplay point system for the Vici prediction platform. XP is an **ICRC** token on the Internet Computer, but it serves a fundamentally different purpose from the [VICI token](https://github.com/AntoninoVentworthy/vici-icrc): XP is a **non-monetary, high-volume gameplay asset** designed for frictionless engagement.
+
+## Dual-token context
+
+Vici operates a dual-token model:
+
+| Token                                                                         | Symbol | Role                        | Who earns                        | Friction   |
+| ----------------------------------------------------------------------------- | ------ | --------------------------- | -------------------------------- | ---------- |
+| **Vici XP** (this repo)                                                       | VXP    | Gameplay / onboarding layer | Everyone — every user, instantly | Zero       |
+| **VICI Token** ([vici-icrc](https://github.com/AntoninoVentworthy/vici-icrc)) | VICI   | Reward / coordination layer | Top / most active users — scarce | Higher bar |
+
+A third layer — **settlement** (stablecoin for real-money prediction markets) — is a separate, future concern and is not part of either token.
+
+### Why two tokens?
+
+| Concern              | How the split helps                                                                                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Regulation**       | XP is play money — no MiCA / e-money classification risk. VICI is a coordination/utility asset, not settlement currency. Clean separation avoids "1 token = 1 USD" ambiguity.          |
+| **Growth**           | XP removes all friction: no wallet setup, no money feel. Critical for scaling in emerging markets and building an addictive gameplay loop.                                             |
+| **Incentive design** | XP drives engagement (progression, streaks, leaderboard). VICI adds scarce upside (earned by top users, unlocks advanced features). Different distribution curves for different goals. |
+
+---
+
+## XP design principles
+
+1. **Not money.** XP has no intended monetary value. It is not listed, not traded, not redeemable for cash.
+2. **Abundant.** Every user earns XP by participating. The supply is generous — the goal is to make the gameplay loop feel rewarding, not scarce.
+3. **Instant.** Earning XP should feel immediate: swipe, predict, get feedback, see your score change.
+4. **Progression-driven.** XP powers leaderboards, streaks, levels, and reputation. Status comes from accumulated XP, not from buying it.
+
+---
 
 ## ICRC reality vs. target economics
 
-| Aspect                     | ICRC / ledger                           | Target policy                                                                                                  |
-| -------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| New tokens                 | Minted from the minting account         | Same mechanism                                                                                                 |
-| Maximum circulating design | Not “1B hard cap” in the token standard | **1,000,000,000 VICI** as the **maximum amount we commit to mint in total**, enforced by reserve configuration |
-| Where minted tokens go     | Transfers from minter                   | Only to **pre-approved reserve accounts**; the minter does not mint to arbitrary users                         |
+| Aspect                 | ICRC / ledger                   | Target policy                                                                           |
+| ---------------------- | ------------------------------- | --------------------------------------------------------------------------------------- |
+| New tokens             | Minted from the minting account | Same mechanism                                                                          |
+| Maximum supply         | Not a hard ledger cap           | **1,000,000,000 XP** as the maximum committed amount, enforced by reserve configuration |
+| Where minted tokens go | Transfers from minter           | Only to **pre-approved reserve accounts**; the minter does not mint to arbitrary users  |
 
-**Operational model:** treat each major allocation (treasury, community incentives, team, etc.) as one or more **minter reserves**. Set each reserve’s `lifetime_received_maximum` (and related fields) so that the **sum of lifetime maximums across all reserves does not exceed 1B VICI** (in base units, respecting decimals). Additional safety layers (`max_balance`, `max_topup_per_rebalance`, `rate_limits`, global `minting_enabled`, `max_mint_per_operation`) align short-term flows with long-term emission intent.
-
-The [minter README](src/minter/README.md) documents the exact fields (`lifetime_received_minimum`, `lifetime_received_maximum`, rebalance rules, and so on).
+**Operational model:** each gameplay category (predictions, onboarding, streaks, etc.) maps to a **minter reserve** with its own `lifetime_received_maximum` and rate limits. The sum of all reserve caps equals 1B XP. The [minter README](src/minter/README.md) documents the exact fields.
 
 ---
 
-## Total supply and initial allocation (policy)
+## Total supply and allocation
 
-**Target maximum minted supply:** **1,000,000,000 VICI** (fixed for economic planning).
+**Target maximum minted supply:** **1,000,000,000 XP**.
 
-**Allocation (authoritative model; supersedes any older placeholder splits such as 20/20/20/20/20 in draft whitepaper material):**
+All XP is community/gameplay allocation. There are no corporate reserves (no treasury, team, investor, or advisor allocations — those belong to the [VICI token](https://github.com/AntoninoVentworthy/vici-icrc)).
 
-| Category             | Share   | Tokens | Reserve role                                                   |
-| -------------------- | ------- | ------ | -------------------------------------------------------------- |
-| Community incentives | **45%** | 450M   | Emissions, programmes, usage-linked distribution               |
-| Treasury             | **20%** | 200M   | Ecosystem, liquidity, R&D, discretionary grants                |
-| Team                 | **15%** | 150M   | Team allocation (with vesting off-chain or via separate locks) |
-| Investors            | **15%** | 150M   | Investor allocation (with vesting)                             |
-| Advisors             | **5%**  | 50M    | Advisor allocation (with vesting)                              |
+| Reserve         | Cap (XP) | Share | Purpose                                             | Auto-rebalance |
+| --------------- | -------- | ----- | --------------------------------------------------- | -------------- |
+| **forecast**    | 400M     | 40%   | Prediction participation rewards                    | yes            |
+| **onboarding**  | 200M     | 20%   | Signup bonuses, activation, tutorial completion     | yes            |
+| **streaks**     | 200M     | 20%   | Daily engagement, login streaks, streak multipliers | yes            |
+| **leaderboard** | 100M     | 10%   | Periodic leaderboard prizes, competition rewards    | yes            |
+| **campaign**    | 50M      | 5%    | Promotions, referral bonuses, events                | yes            |
+| **buffer**      | 50M      | 5%    | Strategic reserve for future gameplay features      | no (manual)    |
 
-**Interpretation:** the majority of tokens are **not** notionally “pre-sold”; they are released over time through usage, incentives, and governance-aligned programmes—implemented by **routing mints into the corresponding reserves** and distributing from those accounts according to product rules.
+Reserve caps sum exactly to 1,000M. Each is registered as a separate minter reserve with its own principal, so per-category caps are enforced on-chain.
 
 ---
 
-## Emissions (community pool)
+## Emissions
 
-From the **450M** community allocation, the **intended release shape** over time:
+### Emission schedule
 
-| Phase     | Share of community allocation | Approx. from 450M |
-| --------- | ----------------------------- | ----------------- |
-| Years 1–3 | **50%**                       | ~225M             |
-| Years 4–7 | **35%**                       | ~157.5M           |
-| Year 8+   | **15%**                       | ~67.5M            |
+XP emissions are generous — every user should feel rewarded for participating.
 
-This is **policy and scheduling**, implemented by:
+| Phase     | Share of total supply | Approx. from 1B |
+| --------- | --------------------- | --------------- |
+| Years 1–3 | **60%**               | ~600M           |
+| Years 4–7 | **30%**               | ~300M           |
+| Year 8+   | **10%**               | ~100M           |
 
-- reserve **rate limits** and rebalance parameters,
-- programme-level distribution from community/treasury reserves,
-- and (where applicable) burning or locking outside the minter.
-
-**Intent:** stronger early incentives for bootstrapping, then a long tail to reduce speculative inflation pressure.
-
-### Community sub-reserves
-
-The 450M community allocation is **not** a single blob. It is split into six on-chain minter reserves, each with its own lifetime cap and rate limits enforced by the minter:
-
-| Reserve        | Cap (VICI) | % of 45% | Purpose                                   | Auto-rebalance |
-| -------------- | ---------- | -------- | ----------------------------------------- | -------------- |
-| **forecast**   | 135M       | 30%      | Forecast/prediction rewards               | yes            |
-| **liquidity**  | 112.5M     | 25%      | Liquidity provider incentives             | yes            |
-| **onboarding** | 67.5M      | 15%      | New user signup and activation bonuses    | yes            |
-| **oracle**     | 67.5M      | 15%      | Market creation and oracle resolution     | yes            |
-| **campaign**   | 45M        | 10%      | Ecosystem campaigns, partnerships, events | yes            |
-| **buffer**     | 22.5M      | 5%       | Strategic reserve for future needs        | no (manual)    |
-
-Sub-reserve caps sum exactly to 450M. Each is registered as a separate minter reserve with its own principal, so per-category caps are enforced on-chain — not just in application logic.
+**Intent:** strong early emissions to bootstrap the user base and establish the gameplay loop, then a long tail.
 
 ### Daily emission budget
 
-Year 1–3 target: **~75M/year = ~205k VICI/day** across all community buckets.
+Year 1–3 target: **~200M/year = ~548k XP/day** across all gameplay buckets.
 
-| Reserve        | Daily budget | Target balance (7 d) | Min balance (2 d) | Daily rate limit | Yearly rate limit |
-| -------------- | ------------ | -------------------- | ----------------- | ---------------- | ----------------- |
-| **forecast**   | 80k          | 560k                 | 160k              | 160k             | 29.2M             |
-| **liquidity**  | 60k          | 420k                 | 120k              | 120k             | 21.9M             |
-| **onboarding** | 30k          | 210k                 | 60k               | 60k              | 10.95M            |
-| **oracle**     | 20k          | 140k                 | 40k               | 40k              | 7.3M              |
-| **campaign**   | 10k          | 70k                  | 20k               | 20k              | 3.65M             |
+| Reserve         | Daily budget | Target balance (7 d) | Min balance (2 d) | Daily rate limit | Yearly rate limit |
+| --------------- | ------------ | -------------------- | ----------------- | ---------------- | ----------------- |
+| **forecast**    | 220k         | 1.54M                | 440k              | 440k             | 80.3M             |
+| **onboarding**  | 130k         | 910k                 | 260k              | 260k             | 47.45M            |
+| **streaks**     | 110k         | 770k                 | 220k              | 220k             | 40.15M            |
+| **leaderboard** | 55k          | 385k                 | 110k              | 110k             | 20.075M           |
+| **campaign**    | 33k          | 231k                 | 66k               | 66k              | 12.045M           |
 
 The minter's auto-rebalance timer checks every hour. When a reserve's balance drops below its target, the minter refills it — subject to all configured caps, rate limits, and the lifetime maximum. Daily rate limits are set at 2x the daily budget to allow catch-up after downtime.
 
@@ -85,109 +98,38 @@ All parameters are adjustable at runtime via `update_reserve` — no canister re
 
 ---
 
-## Incentives: who earns VICI
+## Who earns XP
 
-Core principle: VICI is earned through **useful behaviour**, not passive holding.
+Every user earns XP through participation — XP is not scarce or exclusive.
 
-| Activity             | Reward (design intent) |
-| -------------------- | ---------------------- |
-| Correct predictions  | VICI                   |
-| Liquidity provision  | VICI                   |
-| Market creation      | VICI                   |
-| Dispute resolution   | VICI                   |
-| Community moderation | VICI                   |
+| Activity               | XP reward (design intent)                |
+| ---------------------- | ---------------------------------------- |
+| Making a prediction    | XP (win or lose — participation matters) |
+| Correct predictions    | Bonus XP                                 |
+| Daily login / streak   | XP (escalating with streak length)       |
+| Completing onboarding  | XP                                       |
+| Referring a friend     | XP                                       |
+| Leaderboard placement  | XP prizes (periodic)                     |
+| Campaign participation | XP (event-specific)                      |
 
-**Design principle:** avoid “passive yield” or “hold to earn” as the primary story—rewards are tied to **accuracy, participation, and contribution**. This supports a compliance-conscious framing (EU and similar jurisdictions).
-
----
-
-## Staking and alignment (product layer)
-
-Staking mechanics are specified at the **application / protocol** layer (not in the ICRC ledger). Intended roles:
-
-1. **Market creation staking** — Stake (e.g. 500 VICI) to create a market; good behaviour → stake returned plus rewards; abuse or spam → **slash / burn** (policy-defined).
-2. **Reputation / confidence staking** — Stake behind predictions (e.g. 1,000 VICI); correct → higher rewards and reputation; wrong → loss of stake or opportunity cost.
-3. **Oracle staking** — Oracles stake to resolve markets; incorrect resolution → **slashed** stake.
-4. **Governance / utility staking (where applicable)** — Fee discounts, voting weight, feature access.
-
-Exact percentages, lock durations, and formulas are **not** fixed in this repository; they belong in protocol specs and on-chain logic above the ledger.
+**Design principle:** XP rewards **participation and consistency**, not just accuracy. The goal is to build habits (predict daily, maintain streaks, climb leaderboards) and make the app feel rewarding from the first interaction.
 
 ---
 
-## Liquidity incentives
-
-- **Who:** liquidity providers, market makers, early traders (as defined by each programme).
-- **Rewards:** trading fees plus **VICI emissions** from the incentive reserves.
-- **Dynamic:** incentive intensity **decreases over time**—bootstrap liquidity early, then rely more on organic fees and market depth.
-
----
-
-## Revenue model and distribution (example)
-
-**Example trading fee:** **1.5%** per trade (illustrative; actual fees are set by product).
-
-**Illustrative split of protocol revenue:**
-
-| Destination          | Share   |
-| -------------------- | ------- |
-| Treasury             | **50%** |
-| Staking incentives   | **30%** |
-| Liquidity programmes | **20%** |
-
-**Important:** VICI is **not** designed as a profit-sharing security. Revenue **feeds treasury, incentives, and liquidity programmes** rather than guaranteeing pro-rata cash flow to token holders. Settlement of trades can remain in stablecoins (e.g. USDC); VICI acts as **coordination, staking, and governance** (where enabled).
-
----
-
-## Treasury
-
-The **treasury** allocation (200M in the table above) plus ongoing revenue supports:
-
-- ecosystem grants,
-- liquidity programmes,
-- R&D,
-- further community incentives,
-
-subject to **token-holder governance** where implemented.
-
----
-
-## Vesting (supply pressure)
-
-| Group     | Vesting (intent)         |
-| --------- | ------------------------ |
-| Team      | 4 years + 12 month cliff |
-| Investors | 3 years                  |
-| Advisors  | 24 months                |
-
-Vesting is enforced by **legal agreements**, vesting schedules in distribution contracts, and/or locked accounts—not by the ICRC ledger alone.
-
----
-
-## Structural choices (summary)
-
-| VICI is not (by design)          | VICI is                                |
-| -------------------------------- | -------------------------------------- |
-| Primary settlement currency      | A coordination and staking asset       |
-| Stablecoin                       | Governance and utility (where enabled) |
-| Direct profit-sharing instrument | Subject to incentive and policy design |
-
----
-
-## Mental model (flow)
+## The gameplay loop
 
 ```text
-Users trade with stablecoins (e.g. USDC)
-        ↓
-Protocol earns fees
-        ↓
-Split: treasury / staking incentives / liquidity programmes
-        ↓
-Users earn VICI through: accuracy, liquidity, creation, resolution, moderation
-        ↓
-Stake VICI for: markets, conviction, oracles, governance (where enabled)
-        ↓
-Good behaviour → rewards; bad behaviour → slashing / burns (policy)
+User opens app
+  → swipe to predict (instant, no friction)
+  → earn XP immediately (participation reward)
+  → correct? bonus XP
+  → streak maintained? multiplier XP
+  → check leaderboard position
+  → climb ranks, unlock status
+  → come back tomorrow (streak incentive)
 ```
+
+XP powers the entire engagement loop. The app backend decides the exact formulas (how much XP per prediction, streak multipliers, leaderboard prize pools) — the minter only ensures reserves stay funded within caps.
 
 ---
 
@@ -198,9 +140,9 @@ The minter and the app backend have distinct responsibilities:
 | Layer           | Responsibility                                                              |
 | --------------- | --------------------------------------------------------------------------- |
 | **Minter**      | Protocol-level emission control: lifetime caps, rate limits, auto-rebalance |
-| **App backend** | User-level distribution: who earns rewards, signup bonuses, per-user caps   |
+| **App backend** | User-level distribution: who earns XP, how much, per-user caps, anti-Sybil  |
 
-The app backend holds a funded reward wallet (one per community sub-reserve). The minter refills these wallets automatically. The backend distributes tokens to users based on application logic — the minter does not need to know about individual users, activity stats, or reward formulas.
+The app backend holds funded reward wallets (one per gameplay reserve). The minter refills these wallets automatically. The backend distributes XP to users based on application logic — the minter does not know about individual users, activity stats, or reward formulas.
 
 ### Refill flow
 
@@ -212,24 +154,36 @@ Minter timer fires (every 1 hour)
       → compute refill amount (capped by all limits)
       → mint to reserve account
   → backend wallet stays funded
-  → backend distributes to users based on app logic
+  → backend distributes XP to users based on app logic
 ```
-
-## Engineering and design items still to specify
-
-The minter enforces **per-reserve** and **global** limits; it does not encode prediction markets or vesting. Open items for protocol specs:
-
-- **Reward formulas** per action type (backend responsibility).
-- **Per-user caps** and anti-Sybil enforcement (backend responsibility).
-- **Slash** percentages and beneficiaries (burn vs. treasury).
-- **Staking** lock durations and unstaking delays.
-- **Reputation** ↔ token weighting.
 
 ---
 
-## Future improvement: governance-controlled minting
+## Relationship to VICI token
 
-Today, minting policy is enforced by **minter configuration** (admin-controlled reserves, caps, and rate limits). A natural upgrade is to place the **minter under on-chain governance**—for example via the [NNS](https://internetcomputer.org/docs/building-apps/governing-apps/overview) or a dedicated governance canister—so that **changes to minting limits, new reserves, and emission parameters** require a vote by **owners and/or stakers**, aligned with the long-term token design.
+XP and VICI serve complementary but distinct roles:
+
+|                          | XP                              | VICI                                |
+| ------------------------ | ------------------------------- | ----------------------------------- |
+| **Earning**              | Everyone, instantly             | Top/most active users only          |
+| **Volume**               | High (generous emission)        | Low (scarce)                        |
+| **Purpose**              | Engagement, progression, status | Rewards, utility, coordination      |
+| **Tradeable**            | No                              | Yes (where applicable)              |
+| **Corporate allocation** | None                            | Treasury, team, investors, advisors |
+
+XP is the **on-ramp**: users start earning immediately, build habits, and establish reputation. VICI is the **upside**: the best users earn scarce rewards with real utility (feature access, advanced modes, private competitions).
+
+---
+
+## Engineering items still to specify
+
+The minter enforces **per-reserve** and **global** limits; it does not encode gameplay logic. Open items for the app/protocol layer:
+
+- **Reward formulas** per activity type (backend responsibility).
+- **Per-user caps** and anti-Sybil enforcement (backend responsibility).
+- **Streak multiplier** curves and reset rules.
+- **Leaderboard** prize pool sizes and competition cadence.
+- **Level / rank** thresholds tied to cumulative XP.
 
 ---
 
@@ -237,3 +191,4 @@ Today, minting policy is enforced by **minter configuration** (admin-controlled 
 
 - [Minter canister — reserves and minting](src/minter/README.md)
 - [Project README](README.md)
+- [VICI Token (vici-icrc)](https://github.com/AntoninoVentworthy/vici-icrc) — the reward/coordination token
