@@ -34,7 +34,7 @@
 # Optional:
 #   DFX_NETWORK (default: local)
 #   DFX_IDENTITY — passed to dfx as --identity if set
-#   DECIMALS — must match ledger token decimals (default: 8)
+#   DECIMALS — must match ledger token decimals (default: 4)
 #   DRY_RUN=1 — print would-be dfx calls, do not execute
 #   MINTER_CANISTER — canister name for dfx (default: minter)
 #
@@ -45,7 +45,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 DFX_NETWORK="${DFX_NETWORK:-local}"
-DECIMALS="${DECIMALS:-8}"
+DECIMALS="${DECIMALS:-4}"
 MINTER_CANISTER="${MINTER_CANISTER:-minter}"
 DRY_RUN="${DRY_RUN:-0}"
 

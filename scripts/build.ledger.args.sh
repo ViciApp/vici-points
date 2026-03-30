@@ -49,8 +49,9 @@ else
   LOGO_FILE="assets/logo/prod_logo_1024.png"
 fi
 
-TRANSFER_FEE=100_000
-DECIMALS=8
+# 0.0001 VXP per transfer (4 decimals → fee = 1 base unit)
+TRANSFER_FEE=1
+DECIMALS=4
 
 # Portable base64 (works on Linux and macOS)
 encode_b64() {
