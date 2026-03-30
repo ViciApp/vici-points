@@ -16,9 +16,18 @@ auto | init | upgrade) ;;
 *)
   ECHO "Usage: $0 [auto|init|upgrade]"
   ECHO "       mode: auto (default), init, upgrade"
+  ECHO ""
+  ECHO "Environment:"
+  ECHO "  DFX_NETWORK — ic | staging | local (default: local)"
+  ECHO "  CANISTER_IDS_JSON — path to repo canister id map (default: <repo>/canister_ids.json)"
+  ECHO "Init minting_account = .minter[\$DFX_NETWORK] only (never your dfx identity)."
   exit 1
   ;;
 esac
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+CANISTER_IDS_JSON="${CANISTER_IDS_JSON:-$REPO_ROOT/canister_ids.json}"
 
 DFX_NETWORK="${DFX_NETWORK:-local}"
 ECHO "Building Ledger args for network: ${DFX_NETWORK}"
@@ -74,8 +83,6 @@ else
 fi
 
 PRINCIPAL="$(dfx identity get-principal)"
-MINTER_PRINCIPAL="${MINTER_PRINCIPAL:-$PRINCIPAL}"
-ECHO "Using minter principal: $MINTER_PRINCIPAL"
 
 if [[ "$MODE" == "upgrade" ]]; then
   VARIANT="Upgrade"
@@ -87,6 +94,29 @@ else
   else
     VARIANT="Init"
   fi
+fi
+
+ECHO "Ledger argument variant: $VARIANT"
+
+if [[ "$VARIANT" == "Init" ]]; then
+  if [[ ! -f "$CANISTER_IDS_JSON" ]]; then
+    echo "ERROR: Canister ids file not found: $CANISTER_IDS_JSON" >&2
+    exit 1
+  fi
+  if ! jq -e --arg n "$DFX_NETWORK" '.minter | type == "object"' "$CANISTER_IDS_JSON" >/dev/null 2>&1; then
+    echo "ERROR: $CANISTER_IDS_JSON must contain a JSON object at key \"minter\"." >&2
+    exit 1
+  fi
+  if ! jq -e --arg n "$DFX_NETWORK" '.minter | has($n)' "$CANISTER_IDS_JSON" >/dev/null 2>&1; then
+    echo "ERROR: No entry .minter[\"$DFX_NETWORK\"] in $CANISTER_IDS_JSON (add the minter canister id for this network)." >&2
+    exit 1
+  fi
+  if ! jq -e --arg n "$DFX_NETWORK" '.minter[$n] | type == "string" and length > 0' "$CANISTER_IDS_JSON" >/dev/null 2>&1; then
+    echo "ERROR: .minter[\"$DFX_NETWORK\"] in $CANISTER_IDS_JSON must be a non-empty string (got null, wrong type, or \"\")." >&2
+    exit 1
+  fi
+  MINTER_PRINCIPAL="$(jq -r --arg n "$DFX_NETWORK" '.minter[$n]' "$CANISTER_IDS_JSON")"
+  ECHO "Using minter principal (minting_account) from $CANISTER_IDS_JSON: $MINTER_PRINCIPAL"
 fi
 
 ARG_FILE="$(jq -re .canisters.ledger.init_arg_file dfx.json)"
