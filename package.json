@@ -16,7 +16,7 @@
 		"reinstall:index:prod": "DFX_NETWORK=ic ./scripts/build.index.args.sh init && dfx canister install index --mode reinstall --ic --argument-file ./out/build.index.args.did --upgrade-unchanged"
 	},
 	"devDependencies": {
-		"@icp-sdk/bindgen": "^0.2.3",
+		"@icp-sdk/bindgen": "^0.4.0",
 		"prettier": "^3.6.2",
 		"prettier-plugin-motoko": "^0.12.1",
 		"prettier-plugin-organize-imports": "^4.3.0"
