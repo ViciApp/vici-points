@@ -4,14 +4,14 @@ Vici XP (**VXP**) is the gameplay point system for the [Vici](https://vici.com) 
 
 XP is the **non-monetary, high-volume gameplay layer** of Vici's dual-token model. Every user earns XP instantly through participation — predicting, streaking, climbing leaderboards. It powers the engagement loop with zero friction.
 
-For the scarce reward/coordination token, see [vici-icrc](https://github.com/AntoninoVentworthy/vici-icrc) (VICI).
+For the scarce reward/coordination token, see [vici-icrc](https://github.com/ViciApp/vici-icrc) (VICI).
 
 ## Dual-token model
 
-| Token          | Symbol | Role                                   | Repo                                                         |
-| -------------- | ------ | -------------------------------------- | ------------------------------------------------------------ |
-| **Vici XP**    | VXP    | Gameplay / onboarding — everyone earns | **this repo**                                                |
-| **VICI Token** | VICI   | Reward / coordination — top users earn | [vici-icrc](https://github.com/AntoninoVentworthy/vici-icrc) |
+| Token          | Symbol | Role                                   | Repo                                              |
+| -------------- | ------ | -------------------------------------- | ------------------------------------------------- |
+| **Vici XP**    | VXP    | Gameplay / onboarding — everyone earns | **this repo**                                     |
+| **VICI Token** | VICI   | Reward / coordination — top users earn | [vici-icrc](https://github.com/ViciApp/vici-icrc) |
 
 ## Standards implemented
 
@@ -138,7 +138,7 @@ bash scripts/format.sh
 
 ## Links
 
-- [VICI Token (vici-icrc)](https://github.com/AntoninoVentworthy/vici-icrc) — the reward/coordination token
+- [VICI Token (vici-icrc)](https://github.com/ViciApp/vici-icrc) — the reward/coordination token
 - [ICRC-1 Standard](https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-1/README.md)
 - [ICRC-2 Standard](https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-2/README.md)
 - [ICRC-3 Standard](https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-3/README.md)
