@@ -3,7 +3,7 @@
 > [!TIP]
 > **Looking for the short version?** See the [TL;DR](TLDR.md) — reserves, emission rates, and the full flow in one page.
 
-This document describes the intended economic design for **Vici XP** (symbol: **VXP**), the gameplay point system for the Vici prediction platform. XP is an **ICRC** token on the Internet Computer, but it serves a fundamentally different purpose from the [VICI token](https://github.com/AntoninoVentworthy/vici-icrc): XP is a **non-monetary, high-volume gameplay asset** designed for frictionless engagement.
+This document describes the intended economic design for **Vici XP** (symbol: **VXP**), the gameplay point system for the Vici prediction platform. XP is an **ICRC** token on the Internet Computer, but it serves a fundamentally different purpose from the [VICI token](https://github.com/ViciApp/vici-icrc): XP is a **non-monetary, high-volume gameplay asset** designed for frictionless engagement.
 
 ## Dual-token context
 
@@ -12,7 +12,7 @@ Vici operates a dual-token model:
 | Token                                                                         | Symbol | Role                        | Who earns                        | Friction   |
 | ----------------------------------------------------------------------------- | ------ | --------------------------- | -------------------------------- | ---------- |
 | **Vici XP** (this repo)                                                       | VXP    | Gameplay / onboarding layer | Everyone — every user, instantly | Zero       |
-| **VICI Token** ([vici-icrc](https://github.com/AntoninoVentworthy/vici-icrc)) | VICI   | Reward / coordination layer | Top / most active users — scarce | Higher bar |
+| **VICI Token** ([vici-icrc](https://github.com/ViciApp/vici-icrc)) | VICI   | Reward / coordination layer | Top / most active users — scarce | Higher bar |
 
 A third layer — **settlement** (stablecoin for real-money prediction markets) — is a separate, future concern and is not part of either token.
 
@@ -51,7 +51,7 @@ A third layer — **settlement** (stablecoin for real-money prediction markets) 
 
 **Target maximum minted supply:** **1,000,000,000 XP**.
 
-All XP is community/gameplay allocation. There are no corporate reserves (no treasury, team, investor, or advisor allocations — those belong to the [VICI token](https://github.com/AntoninoVentworthy/vici-icrc)).
+All XP is community/gameplay allocation. There are no corporate reserves (no treasury, team, investor, or advisor allocations — those belong to the [VICI token](https://github.com/ViciApp/vici-icrc)).
 
 | Reserve         | Cap (XP) | Share | Purpose                                             | Auto-rebalance |
 | --------------- | -------- | ----- | --------------------------------------------------- | -------------- |
@@ -191,4 +191,4 @@ The minter enforces **per-reserve** and **global** limits; it does not encode ga
 
 - [Minter canister — reserves and minting](src/minter/README.md)
 - [Project README](README.md)
-- [VICI Token (vici-icrc)](https://github.com/AntoninoVentworthy/vici-icrc) — the reward/coordination token
+- [VICI Token (vici-icrc)](https://github.com/ViciApp/vici-icrc) — the reward/coordination token
