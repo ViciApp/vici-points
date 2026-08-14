@@ -8,9 +8,9 @@ For the scarce reward/coordination token, see [vici-icrc](https://github.com/Vic
 
 ## Dual-token model
 
-| Token          | Symbol | Role                                   | Repo                                                         |
-| -------------- | ------ | -------------------------------------- | ------------------------------------------------------------ |
-| **Vici XP**    | VXP    | Gameplay / onboarding — everyone earns | **this repo**                                                |
+| Token          | Symbol | Role                                   | Repo                                              |
+| -------------- | ------ | -------------------------------------- | ------------------------------------------------- |
+| **Vici XP**    | VXP    | Gameplay / onboarding — everyone earns | **this repo**                                     |
 | **VICI Token** | VICI   | Reward / coordination — top users earn | [vici-icrc](https://github.com/ViciApp/vici-icrc) |
 
 ## Standards implemented
