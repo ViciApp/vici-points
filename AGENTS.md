@@ -76,8 +76,9 @@ It is not repeated here. What this repo adds:
    `npm run lint`; existing excess is
    pinned and may only shrink. See
    [the quality gate](./docs/ai/pr-and-ci.md#quality-gate).
-7. **Time is nanoseconds, named `_ns`**, from `ic_cdk::api::time()` read once
-   per operation.
+7. **Time is nanoseconds, named `_ns`**, from `ic_cdk::api::time()`. A flow
+   reads it into `now` and passes it to the pure rules; only
+   `ledger::mint_to` reads its own, for the ledger's `created_at_time`.
 
 ## 5. You are about to... read this first
 
