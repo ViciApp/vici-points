@@ -11,8 +11,11 @@ the root.
   `Result<T, MinterError>`, so it can use `?`; the `#[update]` / `#[query]`
   function only converts it with `.into()`: `api/admin/api.rs:26` and
   `api/admin/api.rs:75-78`.
-- **One named result enum per endpoint**, `Ok(T)` / `Err(MinterError)`, with a
-  `From<Result<T, MinterError>>` impl next to it: `api/admin/results.rs:47-63`.
+- **One named result enum per fallible endpoint**, `Ok(T)` /
+  `Err(MinterError)`, with a `From<Result<T, MinterError>>` impl next to it:
+  `api/admin/results.rs:47-63`. Endpoints that cannot fail return the payload
+  directly (`list_reserves`, `get_global_policy`, `get_ledger_id`,
+  `api/query/api.rs:14`, `:51`, `:58`).
   Large payloads go in a `Box` (`api/query/results.rs:21`).
   `scripts/lint.did.sh` fails the build if `Result` or `Result_N` shows up in
   the `.did`.
@@ -115,7 +118,8 @@ purpose it is (rule 2, scoped).
   while the rebalance flow lives in `services/rebalance.rs`. New flows go in
   `services/`.
 - **Copy-paste around the mint.** The lock-and-snapshot tuple
-  (`services/rebalance.rs:23-39`, `api/admin/api.rs:369-413`, `:521-533`), the
+  (`services/rebalance.rs:23-39`, `api/admin/api.rs:369-413`; the preview at
+  `api/admin/api.rs:521-533` takes the same snapshot without the lock), the
   release-on-error `match` (`services/rebalance.rs:41-55`, `:83-91`,
   `api/admin/api.rs:425-455`) and the post-mint commit
   (`services/rebalance.rs:93-110`, `api/admin/api.rs:457-485`) are written

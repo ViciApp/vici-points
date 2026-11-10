@@ -72,8 +72,9 @@ It is not repeated here. What this repo adds:
 6. **Clippy is pedantic and warnings are errors.** A lint that must stay off at
    one site gets `#[expect(lint)]` with a reason comment, never `#[allow]`
    (`allow_attributes` is denied).
-7. **Time is nanoseconds, named `_ns`**, from `ic_cdk::api::time()` read once
-   per operation.
+7. **Time is nanoseconds, named `_ns`**, from `ic_cdk::api::time()`. A flow
+   reads it into `now` and passes it to the pure rules; only
+   `ledger::mint_to` reads its own, for the ledger's `created_at_time`.
 
 ## 5. You are about to... read this first
 
