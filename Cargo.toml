@@ -33,9 +33,15 @@ redundant_test_prefix = "deny"
 str_to_string = "deny"
 string_add = "deny"
 suspicious_xor_used_as_pow = "deny"
+# Size and smell gate: limits in clippy.toml, existing excess pinned with #[expect] (see docs/ai/pr-and-ci.md).
+cognitive_complexity = "deny"
+too_many_arguments = "deny"
+excessive_nesting = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
 missing_errors_doc = { level = "allow", priority = 1 }
 missing_panics_doc = { level = "allow", priority = 1 }
 unnecessary_wraps = { level = "allow", priority = 1 }
-too_many_lines = { level = "allow", priority = 1 }
 format_push_string = { level = "allow", priority = 1 }
 similar_names = { level = "allow", priority = 1 }

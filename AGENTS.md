@@ -71,7 +71,11 @@ It is not repeated here. What this repo adds:
    per endpoint (`lint.did.sh` rejects `Result` and `Result_N` in the `.did`).
 6. **Clippy is pedantic and warnings are errors.** A lint that must stay off at
    one site gets `#[expect(lint)]` with a reason comment, never `#[allow]`
-   (`allow_attributes` is denied).
+   (`allow_attributes` is denied). Size limits per function and per file,
+   and no `unwrap` / `expect` / `panic!` outside tests, are part of
+   `npm run lint`; existing excess is
+   pinned and may only shrink. See
+   [the quality gate](./docs/ai/pr-and-ci.md#quality-gate).
 7. **Time is nanoseconds, named `_ns`**, from `ic_cdk::api::time()` read once
    per operation.
 

@@ -43,6 +43,37 @@ npm run build                   # when Cargo.toml, Cargo.lock or the build scrip
 unstable options), cargo-sort and shfmt; `npm run lint` needs yq, zizmor and
 shellcheck. `scripts/setup <tool>` installs each at its pinned version.
 
+## Quality gate
+
+`npm run lint` fails on size and smell, not only on style. The limits for new
+code live in one place each; read the number there:
+
+| Check                                         | Limit lives in                                                               |
+| --------------------------------------------- | ---------------------------------------------------------------------------- |
+| Lines per function                            | `clippy.toml` `too-many-lines-threshold`                                     |
+| Cognitive complexity per function             | `clippy.toml` `cognitive-complexity-threshold`                               |
+| Arguments per function                        | `clippy.toml` `too-many-arguments-threshold`                                 |
+| Block nesting                                 | `clippy.toml` `excessive-nesting-threshold`                                  |
+| No `unwrap`, `expect`, `panic!` outside tests | `Cargo.toml` `[workspace.lints.clippy]`, `allow-*-in-tests` in `clippy.toml` |
+| Lines per `.rs` file                          | `MAX_LINES` in `scripts/lint.file-size.sh`                                   |
+
+Code over a limit when the gate was added is pinned, and the pins only go
+down:
+
+- Functions carry `#[expect(clippy::<lint>, reason = "baseline: ...")]`, with
+  the size they had in the reason. Clippy cannot cap a single function at its
+  own value, so the reason is the ceiling: a change that makes a pinned
+  function longer, more complex or wider splits it instead. When a refactor
+  brings one under the limit the `expect` is no longer fulfilled and the build
+  fails: delete the attribute in the same PR.
+- Files over `MAX_LINES` are listed in `BASELINE` in
+  `scripts/lint.file-size.sh` with their size rounded up to the next 50. The
+  script fails if a file grows past its cap, and also if a cap is 50 or more
+  above the file (lower it) or the file is back under `MAX_LINES` (remove it).
+- Never raise a limit, add a new `expect` for these lints, or add a baseline
+  entry to get a PR green: split the function or the file (rule 11, respect
+  CI).
+
 ## CI
 
 - `.github/workflows/checks.yml` on every PR, push to `main`, tag and merge

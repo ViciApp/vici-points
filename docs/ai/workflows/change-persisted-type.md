@@ -3,7 +3,7 @@
 For a field on a reserve (`ReserveConfig`, `ReserveRecord`), on `RateLimits`,
 `MintEvent`, `GlobalPolicy`, `IdempotencyRecord`, or on `State` itself. These
 types are Candid-encoded into stable memory by `pre_upgrade` and decoded by
-`post_upgrade` (`src/minter/src/state.rs:58`, `:82`); if the old bytes do not
+`post_upgrade` (`src/minter/src/state.rs:58`, `:90`); if the old bytes do not
 decode into the new type, `post_upgrade` traps and the upgrade fails. This is a
 protected change: ask first.
 

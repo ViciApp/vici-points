@@ -7,3 +7,12 @@ disallowed-macros = [
 
 absolute-paths-max-segments = 1
 absolute-paths-allowed-crates = []
+
+# Limits for new code; functions over them today carry #[expect(..., reason = "baseline: ...")].
+too-many-lines-threshold = 60
+cognitive-complexity-threshold = 10
+too-many-arguments-threshold = 5
+excessive-nesting-threshold = 4
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true

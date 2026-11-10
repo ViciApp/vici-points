@@ -19,6 +19,7 @@ fn release_mint_lock(reserve_id: u64) {
 /// Takes a per-reserve mint lock for the duration of the call.  If another
 /// update is already minting to this reserve, returns
 /// [`MinterError::ReserveOperationInProgress`].
+#[expect(clippy::too_many_lines, reason = "baseline: 103 lines")]
 pub(crate) async fn rebalance_one(id: u64) -> Result<RebalanceResponse, MinterError> {
     let (ledger_id, config, lifetime_minted, mint_events, policy) =
         STATE.with_borrow_mut(|s| -> Result<_, MinterError> {
