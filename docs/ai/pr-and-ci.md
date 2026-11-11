@@ -56,16 +56,18 @@ code live in one place each; read the number there:
 | Block nesting                                 | `clippy.toml` `excessive-nesting-threshold`                                  |
 | No `unwrap`, `expect`, `panic!` outside tests | `Cargo.toml` `[workspace.lints.clippy]`, `allow-*-in-tests` in `clippy.toml` |
 | Lines per `.rs` file                          | `MAX_LINES` in `scripts/lint.file-size.sh`                                   |
+| Size of each pinned function                  | `BASELINE` in `scripts/lint.fn-size.sh`                                      |
 
 Code over a limit when the gate was added is pinned, and the pins only go
 down:
 
-- Functions carry `#[expect(clippy::<lint>, reason = "baseline: ...")]`, with
-  the size they had in the reason. Clippy cannot cap a single function at its
-  own value, so the reason is the ceiling: a change that makes a pinned
-  function longer, more complex or wider splits it instead. When a refactor
-  brings one under the limit the `expect` is no longer fulfilled and the build
-  fails: delete the attribute in the same PR.
+- Functions carry `#[expect(clippy::<lint>, reason = "baseline, ...")]`, and
+  their measured value is listed in
+  `BASELINE` in `scripts/lint.fn-size.sh`. That script measures each pinned
+  function with clippy and fails if the value grew (split the function) or
+  shrank (lower the pin). When a function gets under the limit, clippy no
+  longer fires, the `expect` fails the build: delete it and its `BASELINE`
+  rows in the same PR.
 - Files over `MAX_LINES` are listed in `BASELINE` in
   `scripts/lint.file-size.sh` with their size rounded up to the next 50. The
   script fails if a file grows past its cap, and also if a cap is 50 or more

@@ -98,7 +98,10 @@ pub(crate) fn validate_rate_limits(limits: &RateLimits) -> Result<(), MinterErro
 /// * `target_balance` must be ≤ `max_balance` (when set).
 /// * `lifetime_received_minimum` must be ≤ `lifetime_received_maximum` (when both are set).
 /// * `label` must not be empty.
-#[expect(clippy::too_many_arguments, reason = "baseline: 6 arguments")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "baseline, pinned in scripts/lint.fn-size.sh"
+)]
 fn validate_balance_invariants(
     min_balance: &Nat,
     target_balance: &Nat,
@@ -295,7 +298,7 @@ pub(crate) fn prune_old_events(events: &mut Vec<MintEvent>, now_ns: u64) {
 #[expect(
     clippy::too_many_lines,
     clippy::cognitive_complexity,
-    reason = "baseline: 106 lines, complexity 13"
+    reason = "baseline, pinned in scripts/lint.fn-size.sh"
 )]
 pub(crate) fn compute_rebalance(
     config: &ReserveConfig,

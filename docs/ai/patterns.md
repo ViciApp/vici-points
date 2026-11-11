@@ -25,7 +25,7 @@ the root.
   `guards.rs:16`). Authorization failures are guard rejections, not
   `MinterError` values (`model.rs:221-225`).
 - **Previews are `#[update]`**, not queries, because they call the ledger:
-  `api/admin/api.rs:521-571`.
+  `api/admin/api.rs:527-577`.
 - **Partial updates use `Option<Option<T>>`**: omit keeps, `null` clears, a
   value sets. The struct carries `#[expect(clippy::option_option)]` with the
   reason: `api/admin/params.rs:13`.
@@ -41,7 +41,7 @@ the root.
 - `TransferError::Duplicate` is a success that returns the original block:
   `services/ledger.rs:66-72`.
 - After a successful mint, a missing reserve is
-  `InternalInvariantViolated`, never a panic: `services/rebalance.rs:96-103`.
+  `InternalInvariantViolated`, never a panic: `services/rebalance.rs:99-106`.
 
 ## State
 
@@ -49,7 +49,7 @@ the root.
   `STATE.with_borrow` / `with_borrow_mut`: `state.rs:45-48`.
 - **No `await` inside a borrow.** Read a snapshot (clone what the flow needs),
   drop the borrow, await, then commit in a new borrow. The section header
-  `api/admin/api.rs:261` says it; `services/rebalance.rs:24-40` and `:94-111`
+  `api/admin/api.rs:261` says it; `services/rebalance.rs:27-43` and `:97-114`
   show it.
 
 ### Stable state
@@ -72,13 +72,13 @@ Every mint, automatic or manual, follows the same five steps:
 1. **Lock and snapshot** in one `with_borrow_mut`: insert the id into
    `reserve_mint_inflight`, fail with `ReserveOperationInProgress` if it was
    there, clone config, counters, events and policy
-   (`services/rebalance.rs:24-40`).
+   (`services/rebalance.rs:27-43`).
 2. **Check** with the pure functions of `services/reserve.rs`
    (`compute_rebalance`, `available_mint_budget`, `check_rate_limits`).
 3. **Mint** through `ledger::mint_to` with a memo naming the operation
    (`rebalance:{id}`, `topup:{id}:{key}`).
 4. **Commit** in a new borrow: release the lock, add to `lifetime_minted`,
-   push a `MintEvent`, `prune_old_events` (`services/rebalance.rs:94-111`).
+   push a `MintEvent`, `prune_old_events` (`services/rebalance.rs:97-114`).
 5. **Release the lock on every early exit**: `release_mint_lock`
    (`services/rebalance.rs:10`) or `rollback_manual_mint_begin`
    (`api/admin/api.rs:264`). A lock left behind blocks the reserve until a
@@ -86,16 +86,16 @@ Every mint, automatic or manual, follows the same five steps:
 
 Manual top-ups add **idempotency**: a key is reserved as `Pending` in the same
 borrow as the lock, replayed from `Completed`, and rejected while pending
-(`api/admin/api.rs:376-420`).
+(`api/admin/api.rs:382-426`).
 
 ## Pure rules
 
 - Validation and amount computation take plain values and return
   `Result<_, MinterError>` or a value: `services/reserve.rs:58`
-  (`validate_rate_limits`), `:193` (`available_mint_budget`), `:300`
+  (`validate_rate_limits`), `:196` (`available_mint_budget`), `:303`
   (`compute_rebalance`). `now_ns` is a parameter, never `time()` inside.
 - Amounts are `candid::Nat` end to end, compared and subtracted only after a
-  `>` check, so they never underflow (`services/reserve.rs:214-218`).
+  `>` check, so they never underflow (`services/reserve.rs:217-221`).
 - Larger rate-limit windows must be strictly more restrictive; compared by
   cross-multiplying, never dividing `Nat` (`services/reserve.rs:42-88`).
 
@@ -108,8 +108,9 @@ borrow as the lock, replayed from `Completed`, and rejected while pending
   `core` before `std` (`std_instead_of_core`).
 - `ic_cdk::println!`, never `std::println!` (`clippy.toml` `disallowed-macros`).
 - A function over a size limit today carries
-  `#[expect(clippy::too_many_lines, reason = "baseline: ...")]` and the like
-  (`services/reserve.rs:295-299`). Those pins only shrink; never add one to
+  `#[expect(clippy::too_many_lines, reason = "baseline, ...")]` and the like,
+  with its size pinned in `scripts/lint.fn-size.sh`
+  (`services/reserve.rs:298-302`). Those pins only shrink; never add one to
   new code. See [the quality gate](./pr-and-ci.md#quality-gate).
 
 ## Anti-patterns in the code today
@@ -118,23 +119,23 @@ Do not copy these. Each is a follow-up of its own; fix one only in a PR whose
 purpose it is (rule 2, scoped).
 
 - **A flow in the API layer.** The manual top-up flow, with its own
-  validation, lock, ledger call and commit, lives in `api/admin/api.rs:324-501`
+  validation, lock, ledger call and commit, lives in `api/admin/api.rs:327-507`
   while the rebalance flow lives in `services/rebalance.rs`. New flows go in
   `services/`.
 - **Copy-paste around the mint.** The lock-and-snapshot tuple
-  (`services/rebalance.rs:24-40`, `api/admin/api.rs:376-420`; the preview at
-  `api/admin/api.rs:528-540` takes the same snapshot without the lock), the
-  release-on-error `match` (`services/rebalance.rs:42-56`, `:84-92`,
-  `api/admin/api.rs:432-462`) and the post-mint commit
-  (`services/rebalance.rs:94-111`, `api/admin/api.rs:464-492`) are written
+  (`services/rebalance.rs:27-43`, `api/admin/api.rs:382-426`; the preview at
+  `api/admin/api.rs:534-546` takes the same snapshot without the lock), the
+  release-on-error `match` (`services/rebalance.rs:45-59`, `:87-95`,
+  `api/admin/api.rs:438-468`) and the post-mint commit
+  (`services/rebalance.rs:97-114`, `api/admin/api.rs:470-498`) are written
   twice or more. Extend them into one helper before adding a third caller.
 - **The rate-limit windows written three times.** `validate_rate_limits`,
   `available_mint_budget` and `check_rate_limits` each list the five windows,
   and `HOURS_PER_*` and `NANOS_PER_*` are two parallel constant sets
-  (`services/reserve.rs:12-36`, `:59-65`, `:201-207`, `:241-247`). One table,
+  (`services/reserve.rs:12-36`, `:59-65`, `:204-210`, `:244-250`). One table,
   derived units (rule 5, one value, one place).
 - **Repeated result literals.** `compute_rebalance` builds the same zero
-  `Skipped` result five times (`services/reserve.rs:313-416`); `list_reserves`
+  `Skipped` result five times (`services/reserve.rs:316-419`); `list_reserves`
   and `get_reserve_impl` build `ReserveInfo` twice (`api/query/api.rs:18-22`,
   `:31-35`).
 - **Twin structs.** `AddReserveArg` and `ReserveConfig` hold the same fields,
