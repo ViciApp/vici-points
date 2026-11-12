@@ -32,6 +32,7 @@ that adds a shared piece adds its row. Paths are relative to
 | `check_rate_limits`        | Hard error if minting an amount would breach a window                     |
 | `prune_old_events`         | Drops `MintEvent`s older than the largest window (one year)               |
 | `compute_rebalance`        | Mint amount from cyclical and lifetime deficits, after every cap          |
+| `skipped`                  | A `ComputedRebalance` that mints nothing, with its reason (private)       |
 | `WINDOWS`                  | Every rate-limit window: name, length in hours, its cap (private)         |
 | `NANOS_PER_HOUR`           | The unit window lengths are counted in (private)                          |
 

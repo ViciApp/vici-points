@@ -30,7 +30,7 @@ src/minter/src/api/admin/api.rs validate_manual_topup_inputs too_many_arguments 
 src/minter/src/api/admin/api.rs manual_topup_reserve_impl too_many_lines 118
 src/minter/src/services/rebalance.rs rebalance_one too_many_lines 103
 src/minter/src/services/reserve.rs validate_balance_invariants too_many_arguments 6
-src/minter/src/services/reserve.rs compute_rebalance too_many_lines 106
+src/minter/src/services/reserve.rs compute_rebalance too_many_lines 87
 src/minter/src/services/reserve.rs compute_rebalance cognitive_complexity 13
 "
 
