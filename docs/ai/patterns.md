@@ -133,9 +133,7 @@ purpose it is (rule 2, scoped).
   (`services/rebalance.rs:97-114`, `api/admin/api.rs:470-498`) are written
   twice or more. Extend them into one helper before adding a third caller.
 - **Repeated result literals.** `compute_rebalance` builds the same zero
-  `Skipped` result five times (`services/reserve.rs:305-409`); `list_reserves`
-  and `get_reserve_impl` build `ReserveInfo` twice (`api/query/api.rs:18-22`,
-  `:31-35`).
+  `Skipped` result five times (`services/reserve.rs:305-409`).
 - **Twin structs.** `AddReserveArg` and `ReserveConfig` hold the same fields,
   copied one by one in `api/admin/api.rs:44-58`.
 - **`expect` outside tests and a magic page size.** `state.rs:67` and `:79`

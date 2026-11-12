@@ -15,11 +15,7 @@ fn list_reserves() -> Vec<ReserveInfo> {
     STATE.with_borrow(|s| {
         s.reserves
             .iter()
-            .map(|(&id, record)| ReserveInfo {
-                id,
-                config: record.config.clone(),
-                lifetime_minted: record.lifetime_minted.clone(),
-            })
+            .map(|(&id, record)| ReserveInfo::new(id, record))
             .collect()
     })
 }
@@ -28,11 +24,7 @@ fn get_reserve_impl(id: u64) -> Result<ReserveInfo, MinterError> {
     STATE.with_borrow(|s| {
         s.reserves
             .get(&id)
-            .map(|record| ReserveInfo {
-                id,
-                config: record.config.clone(),
-                lifetime_minted: record.lifetime_minted.clone(),
-            })
+            .map(|record| ReserveInfo::new(id, record))
             .ok_or(MinterError::ReserveNotFound { id })
     })
 }
