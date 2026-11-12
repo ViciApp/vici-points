@@ -16,8 +16,7 @@ lowercase, imperative, no trailing period.
 
 Fill the sections of
 [`.github/pull_request_template.md`](../../.github/pull_request_template.md):
-Summary, Risk Classification, Checklist, Evidence of Verification. Leave out
-"Linked Artifacts": it points at local files nobody else can open.
+Summary, Risk Classification, Checklist, Evidence of Verification.
 
 - Any change under `src/minter/src/` is at least Medium risk; a change to
   minting, locks, idempotency, caps or persisted types is High.
