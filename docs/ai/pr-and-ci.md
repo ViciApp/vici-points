@@ -89,7 +89,8 @@ down:
   runs): a Conventional Commit title with a scope, and no empty change, checked
   again for each merge queue entry. The org `baseline` ruleset requires its
   `pr-checks / pass`.
-- `main` merges through the merge queue (org ruleset `merge-queue`), so the
+- `main` merges through the merge queue (this repo's `merge-queue`
+  ruleset; GitHub has no merge queue rule at org level), so the
   `main` ruleset no longer asks for branches to be up to date. Queuing a PR is
   merging it: only the owner does it.
 - Not in CI: `cargo test`, `npm run build`, and a check that `minter.did`
