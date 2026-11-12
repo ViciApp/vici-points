@@ -43,7 +43,8 @@ shellcheck, zizmor, yq, candid-extractor) are pinned in
 ```
 src/minter/src/lib.rs        lifecycle hooks (init, pre/post upgrade), export_candid!
 src/minter/src/api/          Candid endpoints: admin/ (updates), query/ (queries)
-src/minter/src/services/     reserve.rs pure rules, rebalance.rs, ledger.rs, timer.rs
+src/minter/src/services/     reserve.rs, rate_windows.rs, rate_limit.rs pure rules;
+                             rebalance.rs, ledger.rs, timer.rs
 src/minter/src/model.rs      domain and Candid types, MinterError
 src/minter/src/state.rs      the one STATE and its stable-memory save/restore
 src/minter/src/guards.rs     caller guards
@@ -59,8 +60,9 @@ Every change follows the universal standard in
 It is not repeated here. What this repo adds:
 
 1. **Pure rules stay pure.** Validation and amount computation live in
-   `services/reserve.rs` and take plain values: no `STATE`, no `time()`, no
-   ledger calls. That is what the unit tests cover.
+   `services/reserve.rs`, `rate_windows.rs` and `rate_limit.rs` and take plain
+   values: no `STATE`, no `time()`, no ledger calls. That is what the unit
+   tests cover.
 2. **Never hold a `STATE` borrow across an `await`.** Read a snapshot, release,
    call the ledger, then commit in a new borrow.
 3. **Every mint takes the per-reserve lock** (`reserve_mint_inflight`) and

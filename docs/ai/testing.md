@@ -3,8 +3,9 @@
 ## Where tests live
 
 - **Unit tests** sit in a `#[cfg(test)] mod tests` at the bottom of the file
-  they test. Today that is `src/minter/src/services/reserve.rs:417`: the tests
-  over validation, rate limits, pruning and `compute_rebalance`.
+  they test. Today that is `src/minter/src/services/reserve.rs:245`
+  (reserve validation, `compute_rebalance`), `rate_windows.rs:96` (the windows
+  and their validation) and `rate_limit.rs:99` (budget, checks, pruning).
 - **No integration tests yet.** `pocket-ic` is a dev-dependency of the minter,
   but no test uses it. Flows that lock, call the ledger and commit
   (`services/rebalance.rs`, the manual top-up in `api/admin/api.rs`) have no
@@ -18,11 +19,11 @@ Copy the style of `services/reserve.rs`:
   `test_` prefix (`redundant_test_prefix` is denied):
   `caps_at_max_topup_per_rebalance`, `rejects_empty_label`.
 - Fixtures are small builder functions in the test module (`sample_config`,
-  `sample_policy`, `services/reserve.rs:433-459`); a test mutates the field it
+  `sample_policy`, `services/reserve.rs:253-279`); a test mutates the field it
   is about.
 - Time is a parameter: pass `now_ns` built from the window constants
-  (`NANOS_PER_HOUR * 2`, or the test module's `NANOS_PER_DAY` and
-  `NANOS_PER_WEEK`), never call `time()`.
+  (`NANOS_PER_HOUR * 2`, or the `NANOS_PER_DAY` and `NANOS_PER_WEEK` of the
+  test module in `rate_limit.rs`), never call `time()`.
 - Assert the outcome a caller sees: the `RebalanceAction`, the `mint_amount`,
   or `matches!(r, Err(MinterError::RateLimitExceeded { .. }))`.
 - `unwrap()` is fine in tests; keep it out of production code (rule 6).
@@ -31,8 +32,8 @@ Copy the style of `services/reserve.rs`:
 
 | What you changed                                  | Test it                                                                                                                                |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| A rule in `services/reserve.rs`                   | a unit test in its `mod tests`                                                                                                         |
-| New logic in a flow                               | extract the decision into a pure function in `reserve.rs` and unit-test that                                                           |
+| A rule in a pure module of `services/`            | a unit test in its `mod tests`                                                                                                         |
+| New logic in a flow                               | extract the decision into a pure function in the module that owns it and unit-test that                                                |
 | Locking, idempotency, upgrade or ledger behaviour | a PocketIC integration test under `src/minter/tests/` (ask first: it is the first one, and needs the ledger wasm from `npm run build`) |
 
 ## Commands

@@ -3,7 +3,7 @@ use ic_cdk::api::time;
 
 use crate::{
     model::{MintEvent, MinterError, RebalanceAction, RebalanceResponse},
-    services::{ledger, reserve},
+    services::{ledger, rate_limit, reserve},
     state::STATE,
 };
 
@@ -64,7 +64,7 @@ pub(crate) async fn rebalance_one(id: u64) -> Result<RebalanceResponse, MinterEr
 
             let now = time();
             if let Some(budget) =
-                reserve::available_mint_budget(config.rate_limits.as_ref(), &mint_events, now)
+                rate_limit::available_mint_budget(config.rate_limits.as_ref(), &mint_events, now)
             {
                 if budget == 0_u64 {
                     release_mint_lock(id);
@@ -109,7 +109,7 @@ pub(crate) async fn rebalance_one(id: u64) -> Result<RebalanceResponse, MinterEr
                     timestamp_ns: now,
                     amount: mint_amount.clone(),
                 });
-                reserve::prune_old_events(&mut record.mint_events, now);
+                rate_limit::prune_old_events(&mut record.mint_events, now);
                 Ok(())
             })?;
 
