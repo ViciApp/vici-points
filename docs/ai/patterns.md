@@ -140,8 +140,6 @@ purpose it is (rule 2, scoped).
   `:31-35`).
 - **Twin structs.** `AddReserveArg` and `ReserveConfig` hold the same fields,
   copied one by one in `api/admin/api.rs:44-58`.
-- **Empty modules.** `api/admin/errors.rs`, `api/query/errors.rs` and
-  `api/query/params.rs` are empty files.
 - **`expect` outside tests and a magic page size.** `state.rs:67` and `:79`
   call `expect` (pinned by the quality gate), and the 64 KiB page size is
   the literal `65536` twice (`state.rs:72`, `:106`).
