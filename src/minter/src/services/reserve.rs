@@ -266,7 +266,7 @@ pub(crate) fn prune_old_events(events: &mut Vec<MintEvent>, now_ns: u64) {
 }
 
 // ---------------------------------------------------------------------------
-// Rebalance computation (pure – no IO)
+// Rebalance computation (pure, no IO)
 // ---------------------------------------------------------------------------
 
 /// Computes how many tokens should be minted to a reserve.

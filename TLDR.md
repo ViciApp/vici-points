@@ -1,4 +1,4 @@
-# Vici XP — TL;DR
+# Vici XP: TL;DR
 
 **What:** Gameplay point system (symbol: **VXP**). Non-monetary, high-volume, zero friction.
 
@@ -19,7 +19,7 @@
 | **campaign**    | 50M  | 5%  | Promotion participants, referrals, events         | yes, ~33k XP/day  |
 | **buffer**      | 50M  | 5%  | Reserved for future gameplay features             | manual only       |
 
-No treasury, team, investor, or advisor reserves — those belong to [VICI](https://github.com/ViciApp/vici-icrc).
+No treasury, team, investor, or advisor reserves: those belong to [VICI](https://github.com/ViciApp/vici-icrc).
 
 ---
 
@@ -64,6 +64,6 @@ Users never interact with the minter. They just see XP arrive.
 
 ## See also
 
-- [Tokenomics](TOKENOMICS.md) — full economic design
-- [Minter README](src/minter/README.md) — how the reserve system works
-- [VICI Token](https://github.com/ViciApp/vici-icrc) — the scarce reward/coordination token
+- [Tokenomics](TOKENOMICS.md): full economic design
+- [Minter README](src/minter/README.md): how the reserve system works
+- [VICI Token](https://github.com/ViciApp/vici-icrc): the scarce reward/coordination token

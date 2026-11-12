@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Local reserve principals — copy to init.reserves.config.sh and edit.
+# Local reserve principals: copy to init.reserves.config.sh and edit.
 #
 #   cp scripts/init.reserves.config.example.sh scripts/init.reserves.config.sh
 #
 # scripts/init.reserves.config.sh is gitignored so real principals stay off git.
-# Fill all six principals before running — each must be unique.
+# Fill all six principals before running; each must be unique.
 #
 # Why a wrapper instead of editing init.reserves.sh?
 #   - init.reserves.sh stays generic (reviewable, safe to commit).
