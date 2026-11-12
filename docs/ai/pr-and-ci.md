@@ -3,9 +3,11 @@
 ## Scope
 
 One purpose per PR, each opened from `main` and mergeable in any order; stack
-only when one PR needs the other's code. The rules are 2 (scoped) and 3
-(parallel, not stacked) of
-[`standards/code.md`](https://github.com/AntonioVentilii/officina/blob/main/standards/code.md#2-scoped).
+only when one PR needs the other's code. These are rules
+[2 (scoped)](https://github.com/AntonioVentilii/officina/blob/main/standards/code.md#2-scoped)
+and
+[3 (parallel, not stacked)](https://github.com/AntonioVentilii/officina/blob/main/standards/code.md#3-parallel-not-stacked)
+of the Officina code standard.
 
 ## Title
 
