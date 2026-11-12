@@ -35,7 +35,8 @@ src/minter/
       ledger.rs            ICRC-1 client: get_balance, mint_to
       timer.rs             the hourly rebalance timer
 scripts/                   one script per job; see reusability.md
-.github/workflows/         checks.yml (format, lint), release.yml (tag -> assets)
+.github/workflows/         checks.yml (format, lint), pr-checks.yml (org-wide PR rules),
+                           release.yml (tag -> assets)
 .github/actions/           prepare (node, rust, tools), needs_success, add-and-commit
 ```
 
