@@ -23,17 +23,17 @@ that adds a shared piece adds its row. Paths are relative to
 
 ## Pure rules (`services/reserve.rs`)
 
-| Name                                  | What it does                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------- |
-| `validate_add_reserve_arg`            | Balance invariants plus rate-limit progressivity for a new reserve        |
-| `validate_reserve_config`             | Same checks on a full config after a partial update                       |
-| `validate_rate_limits`                | Larger windows must be strictly more restrictive                          |
-| `available_mint_budget`               | Minimum remaining budget across configured windows, `None` without limits |
-| `check_rate_limits`                   | Hard error if minting an amount would breach a window                     |
-| `prune_old_events`                    | Drops `MintEvent`s older than the largest window (one year)               |
-| `compute_rebalance`                   | Mint amount from cyclical and lifetime deficits, after every cap          |
-| `NANOS_PER_HOUR` ... `NANOS_PER_YEAR` | Window lengths in ns (private to the module)                              |
-| `HOURS_PER_HOUR` ... `HOURS_PER_YEAR` | Window lengths in hours for validation math (private)                     |
+| Name                       | What it does                                                              |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `validate_add_reserve_arg` | Balance invariants plus rate-limit progressivity for a new reserve        |
+| `validate_reserve_config`  | Same checks on a full config after a partial update                       |
+| `validate_rate_limits`     | Larger windows must be strictly more restrictive                          |
+| `available_mint_budget`    | Minimum remaining budget across configured windows, `None` without limits |
+| `check_rate_limits`        | Hard error if minting an amount would breach a window                     |
+| `prune_old_events`         | Drops `MintEvent`s older than the largest window (one year)               |
+| `compute_rebalance`        | Mint amount from cyclical and lifetime deficits, after every cap          |
+| `WINDOWS`                  | Every rate-limit window: name, length in hours, its cap (private)         |
+| `NANOS_PER_HOUR`           | The unit window lengths are counted in (private)                          |
 
 ## Flows and clients (`services/`)
 
