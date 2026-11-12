@@ -15,15 +15,15 @@ the root.
   `Err(MinterError)`, with a `From<Result<T, MinterError>>` impl next to it:
   `api/admin/results.rs:47-63`. Endpoints that cannot fail return the payload
   directly (`list_reserves`, `get_global_policy`, `get_ledger_id`,
-  `api/query/api.rs:14`, `:51`, `:58`).
-  Large payloads go in a `Box` (`api/query/results.rs:21`).
+  `api/query/api.rs:14`, `:43`, `:50`).
+  Large payloads go in a `Box` (`api/query/results.rs:32`).
   `scripts/lint.did.sh` fails the build if `Result` or `Result_N` shows up in
   the `.did`.
 - **A guard on every endpoint**, in the attribute:
   `#[update(guard = "caller_is_controller")]` for anything that writes or
   mints, `caller_is_not_anonymous` for reads and previews (`guards.rs:5`,
-  `guards.rs:16`). Authorization failures are guard rejections, not
-  `MinterError` values (`model.rs:221-225`).
+  `guards.rs:15`). Authorization failures are guard rejections, not
+  `MinterError` values (`model.rs:220-224`).
 - **Previews are `#[update]`**, not queries, because they call the ledger:
   `api/admin/api.rs:527-577`.
 - **Partial updates use `Option<Option<T>>`**: omit keeps, `null` clears, a
