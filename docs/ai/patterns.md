@@ -91,13 +91,16 @@ borrow as the lock, replayed from `Completed`, and rejected while pending
 ## Pure rules
 
 - Validation and amount computation take plain values and return
-  `Result<_, MinterError>` or a value: `services/reserve.rs:58`
-  (`validate_rate_limits`), `:196` (`available_mint_budget`), `:303`
+  `Result<_, MinterError>` or a value: `services/reserve.rs:69`
+  (`validate_rate_limits`), `:201` (`available_mint_budget`), `:292`
   (`compute_rebalance`). `now_ns` is a parameter, never `time()` inside.
 - Amounts are `candid::Nat` end to end, compared and subtracted only after a
-  `>` check, so they never underflow (`services/reserve.rs:217-221`).
+  `>` check, so they never underflow (`services/reserve.rs:214-218`).
 - Larger rate-limit windows must be strictly more restrictive; compared by
-  cross-multiplying, never dividing `Nat` (`services/reserve.rs:42-88`).
+  cross-multiplying, never dividing `Nat` (`services/reserve.rs:53-93`).
+- Every rate-limit window (its name, length and cap) is one row of `WINDOWS`
+  (`services/reserve.rs:40-46`); validation, budget, checks and pruning all
+  iterate it.
 
 ## Lints
 
@@ -110,7 +113,7 @@ borrow as the lock, replayed from `Completed`, and rejected while pending
 - A function over a size limit today carries
   `#[expect(clippy::too_many_lines, reason = "baseline, ...")]` and the like,
   with its size pinned in `scripts/lint.fn-size.sh`
-  (`services/reserve.rs:298-302`). Those pins only shrink; never add one to
+  (`services/reserve.rs:287-291`). Those pins only shrink; never add one to
   new code. See [the quality gate](./pr-and-ci.md#quality-gate).
 
 ## Anti-patterns in the code today
@@ -129,13 +132,8 @@ purpose it is (rule 2, scoped).
   `api/admin/api.rs:438-468`) and the post-mint commit
   (`services/rebalance.rs:97-114`, `api/admin/api.rs:470-498`) are written
   twice or more. Extend them into one helper before adding a third caller.
-- **The rate-limit windows written three times.** `validate_rate_limits`,
-  `available_mint_budget` and `check_rate_limits` each list the five windows,
-  and `HOURS_PER_*` and `NANOS_PER_*` are two parallel constant sets
-  (`services/reserve.rs:12-36`, `:59-65`, `:204-210`, `:244-250`). One table,
-  derived units (rule 5, one value, one place).
 - **Repeated result literals.** `compute_rebalance` builds the same zero
-  `Skipped` result five times (`services/reserve.rs:316-419`); `list_reserves`
+  `Skipped` result five times (`services/reserve.rs:305-409`); `list_reserves`
   and `get_reserve_impl` build `ReserveInfo` twice (`api/query/api.rs:18-22`,
   `:31-35`).
 - **Twin structs.** `AddReserveArg` and `ReserveConfig` hold the same fields,

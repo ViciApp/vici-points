@@ -3,7 +3,7 @@
 ## Where tests live
 
 - **Unit tests** sit in a `#[cfg(test)] mod tests` at the bottom of the file
-  they test. Today that is `src/minter/src/services/reserve.rs:434`: 42 tests
+  they test. Today that is `src/minter/src/services/reserve.rs:423`: the tests
   over validation, rate limits, pruning and `compute_rebalance`.
 - **No integration tests yet.** `pocket-ic` is a dev-dependency of the minter,
   but no test uses it. Flows that lock, call the ledger and commit
@@ -18,10 +18,11 @@ Copy the style of `services/reserve.rs`:
   `test_` prefix (`redundant_test_prefix` is denied):
   `caps_at_max_topup_per_rebalance`, `rejects_empty_label`.
 - Fixtures are small builder functions in the test module (`sample_config`,
-  `sample_policy`, `services/reserve.rs:448-474`); a test mutates the field it
+  `sample_policy`, `services/reserve.rs:439-465`); a test mutates the field it
   is about.
 - Time is a parameter: pass `now_ns` built from the window constants
-  (`NANOS_PER_HOUR * 2`), never call `time()`.
+  (`NANOS_PER_HOUR * 2`, or the test module's `NANOS_PER_DAY` and
+  `NANOS_PER_WEEK`), never call `time()`.
 - Assert the outcome a caller sees: the `RebalanceAction`, the `mint_amount`,
   or `matches!(r, Err(MinterError::RateLimitExceeded { .. }))`.
 - `unwrap()` is fine in tests; keep it out of production code (rule 6).
