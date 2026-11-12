@@ -77,6 +77,11 @@ fn add_reserve(arg: AddReserveArg) -> AddReserveResult {
     add_reserve_impl(arg).into()
 }
 
+#[expect(
+    clippy::too_many_lines,
+    clippy::cognitive_complexity,
+    reason = "baseline, pinned in scripts/lint.fn-size.sh"
+)]
 fn update_reserve_impl(arg: UpdateReserveArg) -> Result<(), MinterError> {
     STATE.with_borrow_mut(|s| {
         let record = s
@@ -315,6 +320,10 @@ enum ManualTopupBegin {
     },
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "baseline, pinned in scripts/lint.fn-size.sh"
+)]
 fn validate_manual_topup_inputs(
     arg: &ManualTopupArg,
     policy: &GlobalPolicy,
@@ -361,6 +370,10 @@ fn validate_manual_topup_inputs(
 
 /// Core manual top-up logic, returning a standard `Result` for ergonomic
 /// use of `?` internally.
+#[expect(
+    clippy::too_many_lines,
+    reason = "baseline, pinned in scripts/lint.fn-size.sh"
+)]
 async fn manual_topup_reserve_impl(
     arg: ManualTopupArg,
 ) -> Result<ManualTopupResponse, MinterError> {

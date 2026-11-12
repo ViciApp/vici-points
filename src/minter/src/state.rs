@@ -60,6 +60,10 @@ pub fn save_state() {
     use ic_cdk::stable::{stable_grow, stable_size, stable_write};
 
     let state = STATE.with_borrow(Clone::clone);
+    #[expect(
+        clippy::expect_used,
+        reason = "baseline: pre_upgrade has no error channel"
+    )]
     let bytes = encode_one(&state).expect("failed to encode minter state");
     #[expect(clippy::cast_possible_truncation)]
     // IC stable layout uses u32 length; payload capped by memory
@@ -68,6 +72,10 @@ pub fn save_state() {
     let needed_pages = total.div_ceil(65536);
     let current_pages = stable_size();
     if needed_pages > current_pages {
+        #[expect(
+            clippy::expect_used,
+            reason = "baseline: pre_upgrade has no error channel"
+        )]
         stable_grow(needed_pages - current_pages).expect("failed to grow stable memory");
     }
     stable_write(0, &len.to_le_bytes());

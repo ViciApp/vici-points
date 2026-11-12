@@ -23,7 +23,7 @@ variant is an ask first: vici-app and vici-maker call the minter.
    `#[query(guard = "caller_is_not_anonymous")]` function with a `///` doc
    comment that returns `<method>_impl(arg).into()`, or
    `<method>_impl(arg).await.into()` for an `async fn` that calls the ledger
-   (`rebalance_reserve`, `api/admin/api.rs:285-287`).
+   (`rebalance_reserve`, `api/admin/api.rs:290-292`).
 6. **Errors.** Reuse a `MinterError` variant if one fits; a new variant goes
    at the end of the enum, with a doc comment.
 7. **Candid.** Run `npm run did` and commit `src/minter/minter.did`. The diff

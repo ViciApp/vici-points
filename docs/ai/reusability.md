@@ -47,7 +47,7 @@ that adds a shared piece adds its row. Paths are relative to
 
 Private helpers worth reusing inside their file: `release_mint_lock`
 (`services/rebalance.rs:10`), `rollback_manual_mint_begin` and
-`validate_manual_topup_inputs` (`api/admin/api.rs:259`, `:318`).
+`validate_manual_topup_inputs` (`api/admin/api.rs:264`, `:327`).
 
 ## Types (`model.rs`)
 
@@ -86,6 +86,8 @@ Endpoint-only types: `UpdateReserveArg`, `ReleaseStuckMintArg`,
 | `init.reserves.config.example.sh`                | Template for the gitignored reserve principals                                            |
 | `lint.sh`                                        | Runs every `lint.*.sh`                                                                    |
 | `lint.rust.sh`                                   | Clippy on wasm32, tests, examples and benches                                             |
+| `lint.file-size.sh`                              | Line cap per `.rs` file, with a shrink-only baseline                                      |
+| `lint.fn-size.sh`                                | Measures each function pinned with `#[expect]` and fails if it grew or shrank             |
 | `lint.did.sh`                                    | No `Result` or `Result_N` in a `.did`                                                     |
 | `lint.cargo-workspace-dependencies.sh`           | Every crate dependency comes from the workspace                                           |
 | `lint.github.sh`                                 | zizmor, pedantic, on `.github`                                                            |

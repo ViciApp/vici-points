@@ -8,6 +8,8 @@ set -x
 time (
   ./scripts/lint.cargo-workspace-dependencies.sh
   ./scripts/lint.did.sh
+  ./scripts/lint.file-size.sh
+  ./scripts/lint.fn-size.sh
   ./scripts/lint.github.sh
   ./scripts/lint.rust.sh
   ./scripts/lint.sh.sh
