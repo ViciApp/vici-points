@@ -6,34 +6,45 @@ use crate::model::{
 };
 
 // ---------------------------------------------------------------------------
-// Time constants (nanoseconds) – used at runtime for window checks
+// Rate-limit windows
 // ---------------------------------------------------------------------------
 
-/// Nanoseconds in one hour (3 600 s).
+/// Nanoseconds in one hour (3 600 s), the unit every window is counted in.
 const NANOS_PER_HOUR: u64 = 3_600_000_000_000;
-/// Nanoseconds in one day (86 400 s).
-const NANOS_PER_DAY: u64 = 86_400_000_000_000;
-/// Nanoseconds in one week (604 800 s).
-const NANOS_PER_WEEK: u64 = 604_800_000_000_000;
-/// Nanoseconds in 30 days (≈ one month).
-const NANOS_PER_MONTH: u64 = 2_592_000_000_000_000;
-/// Nanoseconds in 365 days (≈ one year).
-const NANOS_PER_YEAR: u64 = 31_536_000_000_000_000;
 
-// ---------------------------------------------------------------------------
-// Time constants (hours) – used for rate-limit validation math
-// ---------------------------------------------------------------------------
+/// One rolling rate-limit window.
+struct Window {
+    /// The window's name in `MinterError::RateLimitExceeded`.
+    label: &'static str,
+    /// Length of the window in hours; months are 30 days, years 365.
+    hours: u64,
+    /// The cap configured for this window, if any.
+    limit: fn(&RateLimits) -> &Option<Nat>,
+}
 
-/// Hours in one hour (identity, used for uniform iteration).
-const HOURS_PER_HOUR: u64 = 1;
-/// Hours in one day.
-const HOURS_PER_DAY: u64 = 24;
-/// Hours in one week.
-const HOURS_PER_WEEK: u64 = 168;
-/// Hours in 30 days (≈ one month).
-const HOURS_PER_MONTH: u64 = 720;
-/// Hours in 365 days (≈ one year).
-const HOURS_PER_YEAR: u64 = 8760;
+impl Window {
+    const fn new(label: &'static str, hours: u64, limit: fn(&RateLimits) -> &Option<Nat>) -> Self {
+        Self {
+            label,
+            hours,
+            limit,
+        }
+    }
+
+    /// Length of the window in nanoseconds.
+    const fn nanos(&self) -> u64 {
+        self.hours * NANOS_PER_HOUR
+    }
+}
+
+/// Every rate-limit window, from the smallest to the largest.
+const WINDOWS: [Window; 5] = [
+    Window::new("hour", 1, |l| &l.max_amount_per_hour),
+    Window::new("day", 24, |l| &l.max_amount_per_day),
+    Window::new("week", 168, |l| &l.max_amount_per_week),
+    Window::new("month", 720, |l| &l.max_amount_per_month),
+    Window::new("year", 8760, |l| &l.max_amount_per_year),
+];
 
 // ---------------------------------------------------------------------------
 // Rate-limit validation
@@ -56,16 +67,10 @@ const HOURS_PER_YEAR: u64 = 8760;
 ///
 /// Returns `Err(MinterError::InvalidConfig)` if the constraint is violated.
 pub(crate) fn validate_rate_limits(limits: &RateLimits) -> Result<(), MinterError> {
-    let windows: Vec<(u64, Nat)> = [
-        (HOURS_PER_HOUR, limits.max_amount_per_hour.clone()),
-        (HOURS_PER_DAY, limits.max_amount_per_day.clone()),
-        (HOURS_PER_WEEK, limits.max_amount_per_week.clone()),
-        (HOURS_PER_MONTH, limits.max_amount_per_month.clone()),
-        (HOURS_PER_YEAR, limits.max_amount_per_year.clone()),
-    ]
-    .into_iter()
-    .filter_map(|(d, l)| l.map(|l| (d, l)))
-    .collect();
+    let windows: Vec<(u64, Nat)> = WINDOWS
+        .iter()
+        .filter_map(|w| (w.limit)(limits).clone().map(|l| (w.hours, l)))
+        .collect();
 
     for pair in windows.windows(2) {
         let (d_small, l_small) = &pair[0];
@@ -201,19 +206,11 @@ pub(crate) fn available_mint_budget(
     let limits = rate_limits?;
     let zero = Nat::from(0_u64);
 
-    let windows: [(u64, &Option<Nat>); 5] = [
-        (NANOS_PER_HOUR, &limits.max_amount_per_hour),
-        (NANOS_PER_DAY, &limits.max_amount_per_day),
-        (NANOS_PER_WEEK, &limits.max_amount_per_week),
-        (NANOS_PER_MONTH, &limits.max_amount_per_month),
-        (NANOS_PER_YEAR, &limits.max_amount_per_year),
-    ];
-
     let mut budget: Option<Nat> = None;
 
-    for (window_ns, limit_opt) in &windows {
-        if let Some(limit) = limit_opt {
-            let used = usage_in_window(events, now_ns, *window_ns);
+    for window in &WINDOWS {
+        if let Some(limit) = (window.limit)(limits) {
+            let used = usage_in_window(events, now_ns, window.nanos());
             let remaining = if limit > &used {
                 limit.clone() - used
             } else {
@@ -241,21 +238,13 @@ pub(crate) fn check_rate_limits(
     amount: &Nat,
     now_ns: u64,
 ) -> Result<(), MinterError> {
-    let window_checks: [(&Option<Nat>, u64, &str); 5] = [
-        (&limits.max_amount_per_hour, NANOS_PER_HOUR, "hour"),
-        (&limits.max_amount_per_day, NANOS_PER_DAY, "day"),
-        (&limits.max_amount_per_week, NANOS_PER_WEEK, "week"),
-        (&limits.max_amount_per_month, NANOS_PER_MONTH, "month"),
-        (&limits.max_amount_per_year, NANOS_PER_YEAR, "year"),
-    ];
-
-    for (limit_opt, window_ns, label) in &window_checks {
-        if let Some(limit) = limit_opt {
-            let used = usage_in_window(events, now_ns, *window_ns);
+    for window in &WINDOWS {
+        if let Some(limit) = (window.limit)(limits) {
+            let used = usage_in_window(events, now_ns, window.nanos());
             let projected = used.clone() + amount.clone();
             if &projected > limit {
                 return Err(MinterError::RateLimitExceeded {
-                    window: String::from(*label),
+                    window: String::from(window.label),
                     limit: limit.clone(),
                     current_usage: used,
                     requested: amount.clone(),
@@ -267,12 +256,12 @@ pub(crate) fn check_rate_limits(
     Ok(())
 }
 
-/// Removes mint events older than the largest rate-limit window (1 year).
+/// Removes mint events older than the largest rate-limit window.
 ///
 /// Should be called after every successful mint to keep the event list
 /// bounded.
 pub(crate) fn prune_old_events(events: &mut Vec<MintEvent>, now_ns: u64) {
-    let cutoff = now_ns.saturating_sub(NANOS_PER_YEAR);
+    let cutoff = now_ns.saturating_sub(WINDOWS[WINDOWS.len() - 1].nanos());
     events.retain(|e| e.timestamp_ns >= cutoff);
 }
 
@@ -438,12 +427,14 @@ mod tests {
 
     use super::{
         available_mint_budget, check_rate_limits, compute_rebalance, prune_old_events,
-        validate_balance_invariants, validate_rate_limits, NANOS_PER_DAY, NANOS_PER_HOUR,
-        NANOS_PER_WEEK,
+        validate_balance_invariants, validate_rate_limits, NANOS_PER_HOUR, WINDOWS,
     };
     use crate::model::{
         GlobalPolicy, MintEvent, MinterError, RateLimits, RebalanceAction, ReserveConfig,
     };
+
+    const NANOS_PER_DAY: u64 = 86_400_000_000_000;
+    const NANOS_PER_WEEK: u64 = 604_800_000_000_000;
 
     fn sample_config() -> ReserveConfig {
         ReserveConfig {
@@ -978,5 +969,31 @@ mod tests {
         let r = compute_rebalance(&c, &Nat::from(300_u64), &Nat::from(0_u64), &p).unwrap();
         assert_eq!(r.action, RebalanceAction::Minted);
         assert_eq!(r.mint_amount, Nat::from(700_u64));
+    }
+
+    #[test]
+    fn windows_are_an_hour_a_day_a_week_30_and_365_days_each_with_its_cap() {
+        let limits = RateLimits {
+            max_amount_per_hour: Some(Nat::from(1_u64)),
+            max_amount_per_day: Some(Nat::from(2_u64)),
+            max_amount_per_week: Some(Nat::from(3_u64)),
+            max_amount_per_month: Some(Nat::from(4_u64)),
+            max_amount_per_year: Some(Nat::from(5_u64)),
+        };
+        let windows: Vec<(&str, u64, Option<Nat>)> = WINDOWS
+            .iter()
+            .map(|w| (w.label, w.nanos(), (w.limit)(&limits).clone()))
+            .collect();
+        let cap = |n: u64| Some(Nat::from(n));
+        assert_eq!(
+            windows,
+            vec![
+                ("hour", 3_600_000_000_000, cap(1)),
+                ("day", 86_400_000_000_000, cap(2)),
+                ("week", 604_800_000_000_000, cap(3)),
+                ("month", 2_592_000_000_000_000, cap(4)),
+                ("year", 31_536_000_000_000_000, cap(5)),
+            ]
+        );
     }
 }
