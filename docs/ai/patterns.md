@@ -135,9 +135,7 @@ purpose it is (rule 2, scoped).
   (`services/reserve.rs:12-36`, `:59-65`, `:204-210`, `:244-250`). One table,
   derived units (rule 5, one value, one place).
 - **Repeated result literals.** `compute_rebalance` builds the same zero
-  `Skipped` result five times (`services/reserve.rs:316-419`); `list_reserves`
-  and `get_reserve_impl` build `ReserveInfo` twice (`api/query/api.rs:18-22`,
-  `:31-35`).
+  `Skipped` result five times (`services/reserve.rs:316-419`).
 - **Twin structs.** `AddReserveArg` and `ReserveConfig` hold the same fields,
   copied one by one in `api/admin/api.rs:44-58`.
 - **Empty modules.** `api/admin/errors.rs`, `api/query/errors.rs` and

@@ -69,7 +69,8 @@ Private helpers worth reusing inside their file: `release_mint_lock`
 Endpoint-only types: `UpdateReserveArg`, `ReleaseStuckMintArg`,
 `ManualTopupArg` (`api/admin/params.rs`); `ManualTopupResponse`,
 `PreviewRebalanceResponse` and the `*Result` enums (`api/admin/results.rs`);
-`ReserveInfo`, `GetReserveResult` (`api/query/results.rs`).
+`ReserveInfo` (built from a stored record with `ReserveInfo::new`),
+`GetReserveResult` (`api/query/results.rs`).
 
 ## Scripts (`scripts/`)
 
