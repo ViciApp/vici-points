@@ -3,21 +3,21 @@
 ## Title
 
 Conventional commits, as in the history: `type(scope): description`,
-lowercase, imperative, no trailing period.
+lowercase, imperative, no trailing period. The scope is required: the
+`pr-checks` title check rejects a title without one.
 
 - Types seen: `feat`, `fix`, `chore`, `docs`, `ci`.
 - Scopes seen: `deps` for security bumps, and Dependabot's `cargo-deps`,
   `cargo-deps-dev`, `npm-deps-dev`, `rust`, `github-actions`. Use `minter` for
   canister code, `scripts` for scripts, `ai` for agent docs.
-- Examples: `chore: point repo cross-links at the ViciApp org`,
+- Examples: `chore(ai): point repo cross-links at the ViciApp org`,
   `fix(deps): bump rustls-webpki, quinn-proto and rand past security advisories`.
 
 ## Body
 
 Fill the sections of
 [`.github/pull_request_template.md`](../../.github/pull_request_template.md):
-Summary, Risk Classification, Checklist, Evidence of Verification. Leave out
-"Linked Artifacts": it points at local files nobody else can open.
+Summary, Risk Classification, Checklist, Evidence of Verification.
 
 - Any change under `src/minter/src/` is at least Medium risk; a change to
   minting, locks, idempotency, caps or persisted types is High.
@@ -83,6 +83,16 @@ down:
   - `format`: runs `npm run format` and fails if it changed any file.
   - `lint`: runs `npm run lint`.
   - `checks-pass`: fails unless both jobs succeeded.
+- `.github/workflows/pr-checks.yml` on every PR and merge group: calls the
+  org-wide pull request rules in `ViciApp/.github`
+  (`.github/workflows/pull-request.yml`, the one copy every ViciApp repository
+  runs): a Conventional Commit title with a scope, and no empty change, checked
+  again for each merge queue entry. The org `baseline` ruleset requires its
+  `pr-checks / pass`.
+- `main` merges through the merge queue (this repo's `merge-queue`
+  ruleset; GitHub has no merge queue rule at org level), so the
+  `main` ruleset no longer asks for branches to be up to date. Queuing a PR is
+  merging it: only the owner does it.
 - Not in CI: `cargo test`, `npm run build`, and a check that `minter.did`
   matches the code. Those are on you.
 - `.github/workflows/release.yml` on a `v*` tag or a published release: builds

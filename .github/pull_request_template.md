@@ -10,12 +10,6 @@ Provide a brief summary of the changes and the problem they solve.
 - [ ] **Medium Risk**: Business logic changes, public API changes.
 - [ ] **High Risk**: Architecture, CI/CD, security, large deletions.
 
-## Linked Artifacts
-
-- Task: [task.md](file:///path/to/task.md)
-- Walkthrough: [walkthrough.md](file:///path/to/walkthrough.md)
-- Implementation Plan: [implementation_plan.md](file:///path/to/implementation_plan.md)
-
 ## Checklist
 
 - [ ] Code follows existing patterns and naming conventions.
@@ -26,4 +20,4 @@ Provide a brief summary of the changes and the problem they solve.
 
 ## Evidence of Verification
 
-Describe what was tested and include links to generated walkthroughs or screenshots.
+List the commands you ran and their result, and the `minter.did` diff for an API change.
