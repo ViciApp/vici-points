@@ -302,25 +302,15 @@ pub(crate) fn compute_rebalance(
     }
 
     if !config.enabled {
-        return Ok(ComputedRebalance {
-            action: RebalanceAction::Skipped {
-                reason: String::from("Reserve is disabled"),
-            },
-            mint_amount: zero.clone(),
-            cyclical_deficit: zero.clone(),
-            lifetime_deficit: zero,
-        });
+        return Ok(skipped("Reserve is disabled", zero.clone(), zero));
     }
 
     if !config.allow_auto_rebalance {
-        return Ok(ComputedRebalance {
-            action: RebalanceAction::Skipped {
-                reason: String::from("Auto-rebalance not allowed for this reserve"),
-            },
-            mint_amount: zero.clone(),
-            cyclical_deficit: zero.clone(),
-            lifetime_deficit: zero,
-        });
+        return Ok(skipped(
+            "Auto-rebalance not allowed for this reserve",
+            zero.clone(),
+            zero,
+        ));
     }
 
     let cyclical_deficit = if current_balance >= &config.target_balance {
@@ -362,14 +352,11 @@ pub(crate) fn compute_rebalance(
                 amount = room;
             }
         } else {
-            return Ok(ComputedRebalance {
-                action: RebalanceAction::Skipped {
-                    reason: String::from("Balance already at or above max_balance"),
-                },
-                mint_amount: zero,
+            return Ok(skipped(
+                "Balance already at or above max_balance",
                 cyclical_deficit,
                 lifetime_deficit,
-            });
+            ));
         }
     }
 
@@ -380,14 +367,11 @@ pub(crate) fn compute_rebalance(
                 amount = remaining;
             }
         } else {
-            return Ok(ComputedRebalance {
-                action: RebalanceAction::Skipped {
-                    reason: String::from("Lifetime maximum already reached"),
-                },
-                mint_amount: zero,
+            return Ok(skipped(
+                "Lifetime maximum already reached",
                 cyclical_deficit,
                 lifetime_deficit,
-            });
+            ));
         }
     }
 
@@ -398,14 +382,11 @@ pub(crate) fn compute_rebalance(
     }
 
     if amount == 0_u64 {
-        return Ok(ComputedRebalance {
-            action: RebalanceAction::Skipped {
-                reason: String::from("Amount capped to zero by policy or config limits"),
-            },
-            mint_amount: zero,
+        return Ok(skipped(
+            "Amount capped to zero by policy or config limits",
             cyclical_deficit,
             lifetime_deficit,
-        });
+        ));
     }
 
     Ok(ComputedRebalance {
@@ -414,6 +395,19 @@ pub(crate) fn compute_rebalance(
         cyclical_deficit,
         lifetime_deficit,
     })
+}
+
+/// A [`ComputedRebalance`] that mints nothing, with the reason and the
+/// deficits found before the check that stopped it.
+fn skipped(reason: &str, cyclical_deficit: Nat, lifetime_deficit: Nat) -> ComputedRebalance {
+    ComputedRebalance {
+        action: RebalanceAction::Skipped {
+            reason: String::from(reason),
+        },
+        mint_amount: Nat::from(0_u64),
+        cyclical_deficit,
+        lifetime_deficit,
+    }
 }
 
 // ---------------------------------------------------------------------------
