@@ -65,15 +65,16 @@ an ask first (rule 7, respect the structure).
 ```
 lib.rs -> api/* -> services/* -> model, state
                 \-> guards
-services/reserve.rs, rate_windows.rs, rate_limit.rs -> model only (pure)
-services/ledger.rs  -> model only (+ ic_cdk call)
+services/reserve.rs, rate_limit.rs -> rate_windows.rs, model (pure)
+services/rate_windows.rs           -> model only (pure)
+services/ledger.rs                 -> model only (+ ic_cdk call)
 ```
 
 - `api/**` may use `services`, `state`, `guards`, `model`; `services` never
   import from `api`.
 - The pure modules (`services/reserve.rs`, `rate_windows.rs`, `rate_limit.rs`)
-  import only `model`, each other and `candid::Nat`: no `STATE`, no `time()`,
-  no `ic_cdk`.
+  import only `model`, `rate_windows` and `candid::Nat`: no `STATE`, no
+  `time()`, no `ic_cdk`.
 - `model.rs` imports nothing from the crate.
 - `api/admin/params.rs` re-exports `AddReserveArg` from `model` so the
   endpoint signatures read from one place.
