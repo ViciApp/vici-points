@@ -18,7 +18,8 @@ variant is an ask first: vici-app and vici-maker call the minter.
 4. **Logic.** Write `fn <method>_impl(...) -> Result<T, MinterError>`. If it
    mints, it is a flow: put it in `services/` and follow
    [the mint pattern](../patterns.md#mint). Rules on plain values go in
-   `services/reserve.rs` with unit tests.
+   the pure module that owns them (`services/reserve.rs`, `rate_windows.rs`,
+   `rate_limit.rs`) with unit tests.
 5. **Endpoint.** A thin `#[update(guard = "caller_is_controller")]` or
    `#[query(guard = "caller_is_not_anonymous")]` function with a `///` doc
    comment that returns `<method>_impl(arg).into()`, or

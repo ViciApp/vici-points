@@ -15,7 +15,7 @@ use crate::{
         GlobalPolicy, IdempotencyEntry, IdempotencyRecord, MintEvent, MinterError, ReserveConfig,
         ReserveRecord,
     },
-    services::{ledger, rebalance, reserve},
+    services::{ledger, rate_limit, rebalance, reserve},
     state::STATE,
 };
 
@@ -362,7 +362,7 @@ fn validate_manual_topup_inputs(
     }
 
     if let Some(limits) = &config.rate_limits {
-        reserve::check_rate_limits(limits, mint_events, &arg.amount, now_ns)?;
+        rate_limit::check_rate_limits(limits, mint_events, &arg.amount, now_ns)?;
     }
 
     Ok(())
@@ -481,7 +481,7 @@ async fn manual_topup_reserve_impl(
                     timestamp_ns: now,
                     amount: arg.amount.clone(),
                 });
-                reserve::prune_old_events(&mut record.mint_events, now);
+                rate_limit::prune_old_events(&mut record.mint_events, now);
 
                 if let Some(k) = idempotency_key {
                     s.idempotency.insert(
@@ -549,7 +549,7 @@ async fn preview_inner(id: u64) -> Result<PreviewRebalanceResponse, MinterError>
     let computed = reserve::compute_rebalance(&config, &balance, &lifetime_minted, &policy)?;
 
     let now = time();
-    let budget = reserve::available_mint_budget(config.rate_limits.as_ref(), &mint_events, now);
+    let budget = rate_limit::available_mint_budget(config.rate_limits.as_ref(), &mint_events, now);
 
     let mut would_mint = computed.mint_amount;
     if let Some(b) = &budget {

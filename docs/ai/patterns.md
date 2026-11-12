@@ -74,7 +74,8 @@ Every mint, automatic or manual, follows the same five steps:
    there, clone config, counters, events and policy
    (`services/rebalance.rs:27-43`).
 2. **Check** with the pure functions of `services/reserve.rs`
-   (`compute_rebalance`, `available_mint_budget`, `check_rate_limits`).
+   (`compute_rebalance`) and `services/rate_limit.rs`
+   (`available_mint_budget`, `check_rate_limits`).
 3. **Mint** through `ledger::mint_to` with a memo naming the operation
    (`rebalance:{id}`, `topup:{id}:{key}`).
 4. **Commit** in a new borrow: release the lock, add to `lifetime_minted`,
@@ -91,17 +92,18 @@ borrow as the lock, replayed from `Completed`, and rejected while pending
 ## Pure rules
 
 - Validation and amount computation take plain values and return
-  `Result<_, MinterError>` or a value: `services/reserve.rs:69`
-  (`validate_rate_limits`), `:201` (`available_mint_budget`), `:292`
+  `Result<_, MinterError>` or a value: `services/rate_windows.rs:66`
+  (`validate_rate_limits`), `services/rate_limit.rs:28`
+  (`available_mint_budget`), `services/reserve.rs:120`
   (`compute_rebalance`). `now_ns` is a parameter, never `time()` inside.
 - A rebalance that mints nothing is built by `skipped`, with its reason and
-  the deficits found so far (`services/reserve.rs:402`).
+  the deficits found so far (`services/reserve.rs:230`).
 - Amounts are `candid::Nat` end to end, compared and subtracted only after a
-  `>` check, so they never underflow (`services/reserve.rs:214-218`).
+  `>` check, so they never underflow (`services/rate_limit.rs:41-45`).
 - Larger rate-limit windows must be strictly more restrictive; compared by
-  cross-multiplying, never dividing `Nat` (`services/reserve.rs:53-93`).
+  cross-multiplying, never dividing `Nat` (`services/rate_windows.rs:50-90`).
 - Every rate-limit window (its name, length and cap) is one row of `WINDOWS`
-  (`services/reserve.rs:40-46`); validation, budget, checks and pruning all
+  (`services/rate_windows.rs:37-44`); validation, budget, checks and pruning all
   iterate it.
 
 ## Lints
@@ -115,7 +117,7 @@ borrow as the lock, replayed from `Completed`, and rejected while pending
 - A function over a size limit today carries
   `#[expect(clippy::too_many_lines, reason = "baseline, ...")]` and the like,
   with its size pinned in `scripts/lint.fn-size.sh`
-  (`services/reserve.rs:287-291`). Those pins only shrink; never add one to
+  (`services/reserve.rs:115-119`). Those pins only shrink; never add one to
   new code. See [the quality gate](./pr-and-ci.md#quality-gate).
 
 ## Anti-patterns in the code today

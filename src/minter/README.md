@@ -154,6 +154,8 @@ src/minter/src/
   services/
     ledger.rs        ICRC-1 ledger client (balance queries, mint transfers)
     rebalance.rs     Core rebalance execution (single + all reserves)
-    reserve.rs       Pure business logic (validation, rebalance computation, rate limits)
+    rate_limit.rs    Pure business logic (rate-limit budget, checks, event pruning)
+    rate_windows.rs  Pure business logic (the rate-limit windows and their validation)
+    reserve.rs       Pure business logic (reserve validation, rebalance computation)
     timer.rs         Recurring auto-rebalance timer (1-hour interval)
 ```

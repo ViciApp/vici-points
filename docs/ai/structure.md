@@ -30,7 +30,9 @@ src/minter/
         results.rs         response structs and one *Result enum per endpoint
       query/               query endpoints, same split (api.rs, results.rs)
     services/
-      reserve.rs           pure rules: validation, rate limits, compute_rebalance (+ unit tests)
+      reserve.rs           pure rules: reserve validation, compute_rebalance (+ unit tests)
+      rate_windows.rs      pure rules: the rate-limit windows and their validation (+ unit tests)
+      rate_limit.rs        pure rules: mint events against the windows: budget, check, prune (+ unit tests)
       rebalance.rs         rebalance_one / rebalance_all: lock, ledger, commit
       ledger.rs            ICRC-1 client: get_balance, mint_to
       timer.rs             the hourly rebalance timer
@@ -42,18 +44,18 @@ scripts/                   one script per job; see reusability.md
 
 ## Where new code goes
 
-| New thing                                              | Goes in                                                                            |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| A rule or computation on plain values                  | `services/reserve.rs`, with unit tests in its `mod tests`                          |
-| A flow that reads state, calls the ledger, commits     | `services/` (one file per flow, like `rebalance.rs`)                               |
-| A call to another canister                             | a client function in `services/` (`ledger.rs` for the ledger)                      |
-| A controller-only method                               | `api/admin/api.rs`, arguments in `params.rs`, result in `results.rs`               |
-| A read-only method                                     | `api/query/api.rs` and `results.rs`                                                |
-| A type stored in `State` or shared by api and services | `model.rs`                                                                         |
-| A type only one endpoint returns                       | that area's `results.rs`                                                           |
-| A new caller check                                     | `guards.rs`                                                                        |
-| A periodic job                                         | `services/timer.rs`, armed from `init` and `post_upgrade`                          |
-| A build, lint or deploy step                           | a new `scripts/<verb>.<object>.sh`, wired from `package.json` or `scripts/lint.sh` |
+| New thing                                              | Goes in                                                                                                                      |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| A rule or computation on plain values                  | the pure module that owns it (`services/reserve.rs`, `rate_windows.rs`, `rate_limit.rs`), with unit tests in its `mod tests` |
+| A flow that reads state, calls the ledger, commits     | `services/` (one file per flow, like `rebalance.rs`)                                                                         |
+| A call to another canister                             | a client function in `services/` (`ledger.rs` for the ledger)                                                                |
+| A controller-only method                               | `api/admin/api.rs`, arguments in `params.rs`, result in `results.rs`                                                         |
+| A read-only method                                     | `api/query/api.rs` and `results.rs`                                                                                          |
+| A type stored in `State` or shared by api and services | `model.rs`                                                                                                                   |
+| A type only one endpoint returns                       | that area's `results.rs`                                                                                                     |
+| A new caller check                                     | `guards.rs`                                                                                                                  |
+| A periodic job                                         | `services/timer.rs`, armed from `init` and `post_upgrade`                                                                    |
+| A build, lint or deploy step                           | a new `scripts/<verb>.<object>.sh`, wired from `package.json` or `scripts/lint.sh`                                           |
 
 A new module, a new crate in the workspace or a new canister in `dfx.json` is
 an ask first (rule 7, respect the structure).
@@ -63,14 +65,15 @@ an ask first (rule 7, respect the structure).
 ```
 lib.rs -> api/* -> services/* -> model, state
                 \-> guards
-services/reserve.rs -> model only (pure)
+services/reserve.rs, rate_windows.rs, rate_limit.rs -> model only (pure)
 services/ledger.rs  -> model only (+ ic_cdk call)
 ```
 
 - `api/**` may use `services`, `state`, `guards`, `model`; `services` never
   import from `api`.
-- `services/reserve.rs` imports only `model` and `candid::Nat`: no `STATE`, no
-  `time()`, no `ic_cdk`.
+- The pure modules (`services/reserve.rs`, `rate_windows.rs`, `rate_limit.rs`)
+  import only `model`, each other and `candid::Nat`: no `STATE`, no `time()`,
+  no `ic_cdk`.
 - `model.rs` imports nothing from the crate.
 - `api/admin/params.rs` re-exports `AddReserveArg` from `model` so the
   endpoint signatures read from one place.

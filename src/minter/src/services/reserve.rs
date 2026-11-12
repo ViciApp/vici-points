@@ -1,96 +1,11 @@
 use candid::Nat;
 
-use crate::model::{
-    AddReserveArg, ComputedRebalance, GlobalPolicy, MintEvent, MinterError, RateLimits,
-    RebalanceAction, ReserveConfig,
+use crate::{
+    model::{
+        AddReserveArg, ComputedRebalance, GlobalPolicy, MinterError, RebalanceAction, ReserveConfig,
+    },
+    services::rate_windows,
 };
-
-// ---------------------------------------------------------------------------
-// Rate-limit windows
-// ---------------------------------------------------------------------------
-
-/// Nanoseconds in one hour (3 600 s), the unit every window is counted in.
-const NANOS_PER_HOUR: u64 = 3_600_000_000_000;
-
-/// One rolling rate-limit window.
-struct Window {
-    /// The window's name in `MinterError::RateLimitExceeded`.
-    label: &'static str,
-    /// Length of the window in hours; months are 30 days, years 365.
-    hours: u64,
-    /// The cap configured for this window, if any.
-    limit: fn(&RateLimits) -> &Option<Nat>,
-}
-
-impl Window {
-    const fn new(label: &'static str, hours: u64, limit: fn(&RateLimits) -> &Option<Nat>) -> Self {
-        Self {
-            label,
-            hours,
-            limit,
-        }
-    }
-
-    /// Length of the window in nanoseconds.
-    const fn nanos(&self) -> u64 {
-        self.hours * NANOS_PER_HOUR
-    }
-}
-
-/// Every rate-limit window, from the smallest to the largest.
-const WINDOWS: [Window; 5] = [
-    Window::new("hour", 1, |l| &l.max_amount_per_hour),
-    Window::new("day", 24, |l| &l.max_amount_per_day),
-    Window::new("week", 168, |l| &l.max_amount_per_week),
-    Window::new("month", 720, |l| &l.max_amount_per_month),
-    Window::new("year", 8760, |l| &l.max_amount_per_year),
-];
-
-// ---------------------------------------------------------------------------
-// Rate-limit validation
-// ---------------------------------------------------------------------------
-
-/// Verifies that larger time windows are strictly more restrictive (lower
-/// effective rate) than smaller ones.
-///
-/// For any two adjacent configured windows A (smaller) and B (larger):
-///
-/// ```text
-/// limit_B / duration_B  <  limit_A / duration_A
-/// ```
-///
-/// Rearranged to avoid `Nat` division:
-///
-/// ```text
-/// limit_B * duration_A  <  limit_A * duration_B
-/// ```
-///
-/// Returns `Err(MinterError::InvalidConfig)` if the constraint is violated.
-pub(crate) fn validate_rate_limits(limits: &RateLimits) -> Result<(), MinterError> {
-    let windows: Vec<(u64, Nat)> = WINDOWS
-        .iter()
-        .filter_map(|w| (w.limit)(limits).clone().map(|l| (w.hours, l)))
-        .collect();
-
-    for pair in windows.windows(2) {
-        let (d_small, l_small) = &pair[0];
-        let (d_large, l_large) = &pair[1];
-
-        let lhs = l_large.clone() * Nat::from(*d_small);
-        let rhs = l_small.clone() * Nat::from(*d_large);
-
-        if lhs >= rhs {
-            return Err(MinterError::InvalidConfig {
-                reason: String::from(
-                    "Rate limits must be progressively more restrictive \
-                     for larger time windows",
-                ),
-            });
-        }
-    }
-
-    Ok(())
-}
 
 // ---------------------------------------------------------------------------
 // Balance / config validation
@@ -156,7 +71,7 @@ pub(crate) fn validate_add_reserve_arg(arg: &AddReserveArg) -> Result<(), Minter
         &arg.label,
     )?;
     if let Some(limits) = &arg.rate_limits {
-        validate_rate_limits(limits)?;
+        rate_windows::validate_rate_limits(limits)?;
     }
     Ok(())
 }
@@ -173,96 +88,9 @@ pub(crate) fn validate_reserve_config(config: &ReserveConfig) -> Result<(), Mint
         &config.label,
     )?;
     if let Some(limits) = &config.rate_limits {
-        validate_rate_limits(limits)?;
+        rate_windows::validate_rate_limits(limits)?;
     }
     Ok(())
-}
-
-// ---------------------------------------------------------------------------
-// Rate-limit runtime helpers
-// ---------------------------------------------------------------------------
-
-/// Sums the token amounts minted within the last `window_ns` nanoseconds.
-fn usage_in_window(events: &[MintEvent], now_ns: u64, window_ns: u64) -> Nat {
-    let cutoff = now_ns.saturating_sub(window_ns);
-    events
-        .iter()
-        .filter(|e| e.timestamp_ns >= cutoff)
-        .fold(Nat::from(0_u64), |acc, e| acc + e.amount.clone())
-}
-
-/// Returns the maximum amount mintable right now without exceeding any
-/// configured rate-limit window.
-///
-/// Returns `None` when no rate limits are configured on the reserve.
-/// Returns `Some(0)` when the budget is fully exhausted.
-///
-/// The result is the *minimum remaining budget* across all active windows.
-pub(crate) fn available_mint_budget(
-    rate_limits: Option<&RateLimits>,
-    events: &[MintEvent],
-    now_ns: u64,
-) -> Option<Nat> {
-    let limits = rate_limits?;
-    let zero = Nat::from(0_u64);
-
-    let mut budget: Option<Nat> = None;
-
-    for window in &WINDOWS {
-        if let Some(limit) = (window.limit)(limits) {
-            let used = usage_in_window(events, now_ns, window.nanos());
-            let remaining = if limit > &used {
-                limit.clone() - used
-            } else {
-                zero.clone()
-            };
-            budget = Some(match budget {
-                Some(b) if remaining < b => remaining,
-                Some(b) => b,
-                None => remaining,
-            });
-        }
-    }
-
-    budget
-}
-
-/// Hard check used by manual top-ups: returns an error if minting `amount`
-/// would exceed any configured rate-limit window.
-///
-/// Unlike [`available_mint_budget`] (which returns a budget for soft
-/// capping), this function fails fast with a descriptive error.
-pub(crate) fn check_rate_limits(
-    limits: &RateLimits,
-    events: &[MintEvent],
-    amount: &Nat,
-    now_ns: u64,
-) -> Result<(), MinterError> {
-    for window in &WINDOWS {
-        if let Some(limit) = (window.limit)(limits) {
-            let used = usage_in_window(events, now_ns, window.nanos());
-            let projected = used.clone() + amount.clone();
-            if &projected > limit {
-                return Err(MinterError::RateLimitExceeded {
-                    window: String::from(window.label),
-                    limit: limit.clone(),
-                    current_usage: used,
-                    requested: amount.clone(),
-                });
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Removes mint events older than the largest rate-limit window.
-///
-/// Should be called after every successful mint to keep the event list
-/// bounded.
-pub(crate) fn prune_old_events(events: &mut Vec<MintEvent>, now_ns: u64) {
-    let cutoff = now_ns.saturating_sub(WINDOWS[WINDOWS.len() - 1].nanos());
-    events.retain(|e| e.timestamp_ns >= cutoff);
 }
 
 // ---------------------------------------------------------------------------
@@ -419,16 +247,8 @@ mod tests {
     use candid::{Nat, Principal};
     use icrc_ledger_types::icrc1::account::Account;
 
-    use super::{
-        available_mint_budget, check_rate_limits, compute_rebalance, prune_old_events,
-        validate_balance_invariants, validate_rate_limits, NANOS_PER_HOUR, WINDOWS,
-    };
-    use crate::model::{
-        GlobalPolicy, MintEvent, MinterError, RateLimits, RebalanceAction, ReserveConfig,
-    };
-
-    const NANOS_PER_DAY: u64 = 86_400_000_000_000;
-    const NANOS_PER_WEEK: u64 = 604_800_000_000_000;
+    use super::{compute_rebalance, validate_balance_invariants};
+    use crate::model::{GlobalPolicy, RebalanceAction, ReserveConfig};
 
     fn sample_config() -> ReserveConfig {
         ReserveConfig {
@@ -536,226 +356,6 @@ mod tests {
             "ok",
         );
         assert!(r.is_err());
-    }
-
-    // -- rate-limit validation -----------------------------------------------
-
-    #[test]
-    fn valid_decreasing_rate_limits() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(100_u64)),
-            max_amount_per_day: Some(Nat::from(2000_u64)), // 2000/24 ≈ 83 < 100
-            max_amount_per_week: Some(Nat::from(10000_u64)), // 10000/168 ≈ 60 < 83
-            max_amount_per_month: None,
-            max_amount_per_year: Some(Nat::from(100_000_u64)), // 100000/8760 ≈ 11 < 60
-        };
-        assert!(validate_rate_limits(&limits).is_ok());
-    }
-
-    #[test]
-    fn rejects_non_decreasing_rate_limits() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(100_u64)),
-            max_amount_per_day: Some(Nat::from(2400_u64)), // 2400/24 = 100, not strictly less
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        assert!(validate_rate_limits(&limits).is_err());
-    }
-
-    #[test]
-    fn rejects_increasing_rate_limits() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(100_u64)),
-            max_amount_per_day: Some(Nat::from(3000_u64)), // 3000/24 = 125 > 100
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        assert!(validate_rate_limits(&limits).is_err());
-    }
-
-    #[test]
-    fn single_window_always_valid() {
-        let limits = RateLimits {
-            max_amount_per_hour: None,
-            max_amount_per_day: Some(Nat::from(1000_u64)),
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        assert!(validate_rate_limits(&limits).is_ok());
-    }
-
-    #[test]
-    fn non_adjacent_windows_validated() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(100_u64)),
-            max_amount_per_day: None,
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: Some(Nat::from(800_u64)), // 800/8760 ≈ 0.09 < 100
-        };
-        assert!(validate_rate_limits(&limits).is_ok());
-    }
-
-    // -- available_mint_budget -----------------------------------------------
-
-    #[test]
-    fn budget_no_limits_returns_none() {
-        assert!(available_mint_budget(None, &[], 1_000_000).is_none());
-    }
-
-    #[test]
-    fn budget_no_events_returns_full_limit() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(500_u64)),
-            max_amount_per_day: None,
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        let budget = available_mint_budget(Some(&limits), &[], NANOS_PER_HOUR * 2);
-        assert_eq!(budget, Some(Nat::from(500_u64)));
-    }
-
-    #[test]
-    fn budget_partially_used() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(500_u64)),
-            max_amount_per_day: None,
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        let now = NANOS_PER_HOUR * 2;
-        let events = vec![MintEvent {
-            timestamp_ns: now - NANOS_PER_HOUR / 2,
-            amount: Nat::from(200_u64),
-        }];
-        let budget = available_mint_budget(Some(&limits), &events, now);
-        assert_eq!(budget, Some(Nat::from(300_u64)));
-    }
-
-    #[test]
-    fn budget_exhausted() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(500_u64)),
-            max_amount_per_day: None,
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        let now = NANOS_PER_HOUR * 2;
-        let events = vec![MintEvent {
-            timestamp_ns: now - 100,
-            amount: Nat::from(600_u64),
-        }];
-        let budget = available_mint_budget(Some(&limits), &events, now);
-        assert_eq!(budget, Some(Nat::from(0_u64)));
-    }
-
-    #[test]
-    fn budget_uses_tightest_window() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(500_u64)),
-            max_amount_per_day: Some(Nat::from(800_u64)),
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        let now = NANOS_PER_DAY * 2;
-        let events = vec![MintEvent {
-            timestamp_ns: now - NANOS_PER_HOUR / 2,
-            amount: Nat::from(100_u64),
-        }];
-        let budget = available_mint_budget(Some(&limits), &events, now);
-        assert_eq!(budget, Some(Nat::from(400_u64)));
-    }
-
-    #[test]
-    fn old_events_outside_window_ignored() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(500_u64)),
-            max_amount_per_day: None,
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        let now = NANOS_PER_DAY;
-        let events = vec![MintEvent {
-            timestamp_ns: now - NANOS_PER_HOUR * 2,
-            amount: Nat::from(9999_u64),
-        }];
-        let budget = available_mint_budget(Some(&limits), &events, now);
-        assert_eq!(budget, Some(Nat::from(500_u64)));
-    }
-
-    // -- check_rate_limits ---------------------------------------------------
-
-    #[test]
-    fn check_passes_when_within_budget() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(500_u64)),
-            max_amount_per_day: None,
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        let r = check_rate_limits(&limits, &[], &Nat::from(400_u64), NANOS_PER_HOUR * 2);
-        assert!(r.is_ok());
-    }
-
-    #[test]
-    fn check_fails_when_exceeds_budget() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(500_u64)),
-            max_amount_per_day: None,
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        let r = check_rate_limits(&limits, &[], &Nat::from(600_u64), NANOS_PER_HOUR * 2);
-        assert!(matches!(r, Err(MinterError::RateLimitExceeded { .. })));
-    }
-
-    #[test]
-    fn check_accounts_for_existing_usage() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(500_u64)),
-            max_amount_per_day: None,
-            max_amount_per_week: None,
-            max_amount_per_month: None,
-            max_amount_per_year: None,
-        };
-        let now = NANOS_PER_HOUR * 2;
-        let events = vec![MintEvent {
-            timestamp_ns: now - 100,
-            amount: Nat::from(400_u64),
-        }];
-        let r = check_rate_limits(&limits, &events, &Nat::from(200_u64), now);
-        assert!(matches!(r, Err(MinterError::RateLimitExceeded { .. })));
-    }
-
-    // -- prune ---------------------------------------------------------------
-
-    #[test]
-    fn prune_removes_old_events() {
-        let now = NANOS_PER_WEEK * 100;
-        let mut events = vec![
-            MintEvent {
-                timestamp_ns: 1,
-                amount: Nat::from(10_u64),
-            },
-            MintEvent {
-                timestamp_ns: now - NANOS_PER_DAY,
-                amount: Nat::from(20_u64),
-            },
-        ];
-        prune_old_events(&mut events, now);
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0].amount, Nat::from(20_u64));
     }
 
     // -- compute_rebalance (cyclical only) -----------------------------------
@@ -963,31 +563,5 @@ mod tests {
         let r = compute_rebalance(&c, &Nat::from(300_u64), &Nat::from(0_u64), &p).unwrap();
         assert_eq!(r.action, RebalanceAction::Minted);
         assert_eq!(r.mint_amount, Nat::from(700_u64));
-    }
-
-    #[test]
-    fn windows_are_an_hour_a_day_a_week_30_and_365_days_each_with_its_cap() {
-        let limits = RateLimits {
-            max_amount_per_hour: Some(Nat::from(1_u64)),
-            max_amount_per_day: Some(Nat::from(2_u64)),
-            max_amount_per_week: Some(Nat::from(3_u64)),
-            max_amount_per_month: Some(Nat::from(4_u64)),
-            max_amount_per_year: Some(Nat::from(5_u64)),
-        };
-        let windows: Vec<(&str, u64, Option<Nat>)> = WINDOWS
-            .iter()
-            .map(|w| (w.label, w.nanos(), (w.limit)(&limits).clone()))
-            .collect();
-        let cap = |n: u64| Some(Nat::from(n));
-        assert_eq!(
-            windows,
-            vec![
-                ("hour", 3_600_000_000_000, cap(1)),
-                ("day", 86_400_000_000_000, cap(2)),
-                ("week", 604_800_000_000_000, cap(3)),
-                ("month", 2_592_000_000_000_000, cap(4)),
-                ("year", 31_536_000_000_000_000, cap(5)),
-            ]
-        );
     }
 }

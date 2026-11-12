@@ -24,7 +24,7 @@ MAX_LINES=400
 
 # Baseline: "path cap", one per line. Only lower these numbers.
 BASELINE="
-src/minter/src/services/reserve.rs 1000
+src/minter/src/services/reserve.rs 600
 src/minter/src/api/admin/api.rs 600
 "
 

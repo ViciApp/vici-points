@@ -21,20 +21,20 @@ that adds a shared piece adds its row. Paths are relative to
 | `save_state`        | Candid-encodes `State` into stable memory (pre_upgrade)                  |
 | `try_restore_state` | Decodes `State` from stable memory, `false` if empty or invalid          |
 
-## Pure rules (`services/reserve.rs`)
+## Pure rules (`services/`)
 
-| Name                       | What it does                                                              |
-| -------------------------- | ------------------------------------------------------------------------- |
-| `validate_add_reserve_arg` | Balance invariants plus rate-limit progressivity for a new reserve        |
-| `validate_reserve_config`  | Same checks on a full config after a partial update                       |
-| `validate_rate_limits`     | Larger windows must be strictly more restrictive                          |
-| `available_mint_budget`    | Minimum remaining budget across configured windows, `None` without limits |
-| `check_rate_limits`        | Hard error if minting an amount would breach a window                     |
-| `prune_old_events`         | Drops `MintEvent`s older than the largest window (one year)               |
-| `compute_rebalance`        | Mint amount from cyclical and lifetime deficits, after every cap          |
-| `skipped`                  | A `ComputedRebalance` that mints nothing, with its reason (private)       |
-| `WINDOWS`                  | Every rate-limit window: name, length in hours, its cap (private)         |
-| `NANOS_PER_HOUR`           | The unit window lengths are counted in (private)                          |
+| Name                                 | What it does                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| `reserve::validate_add_reserve_arg`  | Balance invariants plus rate-limit progressivity for a new reserve        |
+| `reserve::validate_reserve_config`   | Same checks on a full config after a partial update                       |
+| `reserve::compute_rebalance`         | Mint amount from cyclical and lifetime deficits, after every cap          |
+| `reserve::skipped`                   | A `ComputedRebalance` that mints nothing, with its reason (private)       |
+| `rate_windows::WINDOWS`              | Every rate-limit window: name, length in hours, its cap                   |
+| `rate_windows::NANOS_PER_HOUR`       | The unit window lengths are counted in                                    |
+| `rate_windows::validate_rate_limits` | Larger windows must be strictly more restrictive                          |
+| `rate_limit::available_mint_budget`  | Minimum remaining budget across configured windows, `None` without limits |
+| `rate_limit::check_rate_limits`      | Hard error if minting an amount would breach a window                     |
+| `rate_limit::prune_old_events`       | Drops `MintEvent`s older than the largest window (one year)               |
 
 ## Flows and clients (`services/`)
 
