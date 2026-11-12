@@ -11,8 +11,8 @@ Vici operates a dual-token model:
 
 | Token                                                              | Symbol | Role                        | Who earns                       | Friction   |
 | ------------------------------------------------------------------ | ------ | --------------------------- | ------------------------------- | ---------- |
-| **Vici XP** (this repo)                                            | VXP    | Gameplay / onboarding layer | Everyone, every user, instantly | Zero       |
-| **VICI Token** ([vici-icrc](https://github.com/ViciApp/vici-icrc)) | VICI   | Reward / coordination layer | Top / most active users, scarce | Higher bar |
+| **Vici XP** (this repo)                                            | VXP    | Gameplay / onboarding layer | Everyone: every user, instantly | Zero       |
+| **VICI Token** ([vici-icrc](https://github.com/ViciApp/vici-icrc)) | VICI   | Reward / coordination layer | Top / most active users: scarce | Higher bar |
 
 A third layer, **settlement** (stablecoin for real-money prediction markets), is a separate, future concern and is not part of either token.
 
