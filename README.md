@@ -2,16 +2,16 @@
 
 Vici XP (**VXP**) is the gameplay point system for the [Vici](https://vici.com) prediction platform, built on the [Internet Computer](https://internetcomputer.org/) using the **ICRC** family of standards. This repository contains the full on-chain infrastructure: ledger, index, and minter canisters.
 
-XP is the **non-monetary, high-volume gameplay layer** of Vici's dual-token model. Every user earns XP instantly through participation — predicting, streaking, climbing leaderboards. It powers the engagement loop with zero friction.
+XP is the **non-monetary, high-volume gameplay layer** of Vici's dual-token model. Every user earns XP instantly through participation: predicting, streaking, climbing leaderboards. It powers the engagement loop with zero friction.
 
 For the scarce reward/coordination token, see [vici-icrc](https://github.com/ViciApp/vici-icrc) (VICI).
 
 ## Dual-token model
 
-| Token          | Symbol | Role                                   | Repo                                              |
-| -------------- | ------ | -------------------------------------- | ------------------------------------------------- |
-| **Vici XP**    | VXP    | Gameplay / onboarding — everyone earns | **this repo**                                     |
-| **VICI Token** | VICI   | Reward / coordination — top users earn | [vici-icrc](https://github.com/ViciApp/vici-icrc) |
+| Token          | Symbol | Role                                  | Repo                                              |
+| -------------- | ------ | ------------------------------------- | ------------------------------------------------- |
+| **Vici XP**    | VXP    | Gameplay / onboarding, everyone earns | **this repo**                                     |
+| **VICI Token** | VICI   | Reward / coordination, top users earn | [vici-icrc](https://github.com/ViciApp/vici-icrc) |
 
 ## Standards implemented
 
@@ -71,11 +71,11 @@ It is deployed from the official DFINITY `icrc1-index-ng` WASM release and depen
 
 ### Minter
 
-The **minter canister** is a custom Rust canister that acts as the ledger's minting account. It manages a set of _reserve accounts_ — trusted system accounts whose XP balance the minter keeps topped up via configurable rebalancing rules.
+The **minter canister** is a custom Rust canister that acts as the ledger's minting account. It manages a set of _reserve accounts_, trusted system accounts whose XP balance the minter keeps topped up via configurable rebalancing rules.
 
 The minter never mints tokens to arbitrary users. All minting flows through the reserve system with multiple layers of safety controls: global policy flags, per-reserve balance targets, lifetime minimum/maximum guarantees, per-operation caps, and sliding-window rate limits.
 
-A recurring **auto-rebalance timer** (1-hour interval) runs inside the canister, automatically refilling reserves when their balance drops below the configured target. This makes the minter self-operating — no external cron or scheduler required.
+A recurring **auto-rebalance timer** (1-hour interval) runs inside the canister, automatically refilling reserves when their balance drops below the configured target. This makes the minter self-operating, with no external cron or scheduler required.
 
 The **app backend** holds funded reserve wallets and distributes XP to individual users based on gameplay logic. The minter does not know about individual users.
 
@@ -83,7 +83,7 @@ See the [minter README](src/minter/README.md) for a detailed description of its 
 
 ## Tokenomics
 
-XP uses a gameplay-focused reserve structure with **6 reserves** (forecast, onboarding, streaks, leaderboard, campaign, buffer) — no corporate allocations. The full design is described in the [Tokenomics](TOKENOMICS.md) document.
+XP uses a gameplay-focused reserve structure with **6 reserves** (forecast, onboarding, streaks, leaderboard, campaign, buffer), with no corporate allocations. The full design is described in the [Tokenomics](TOKENOMICS.md) document.
 
 ## Project structure
 
@@ -138,7 +138,7 @@ bash scripts/format.sh
 
 ## Links
 
-- [VICI Token (vici-icrc)](https://github.com/ViciApp/vici-icrc) — the reward/coordination token
+- [VICI Token (vici-icrc)](https://github.com/ViciApp/vici-icrc): the reward/coordination token
 - [ICRC-1 Standard](https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-1/README.md)
 - [ICRC-2 Standard](https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-2/README.md)
 - [ICRC-3 Standard](https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-3/README.md)

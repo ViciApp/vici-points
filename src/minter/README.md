@@ -2,7 +2,7 @@
 
 The minter canister manages **reserve accounts** on the Vici XP (VXP) ICRC-1 ledger. It is the ledger's designated minting account: only the minter can create new XP tokens, and it does so exclusively for pre-approved system accounts called _reserves_.
 
-No tokens are ever minted to arbitrary users. Every mint operation flows through the reserve system described below. The **app backend** holds funded reserve wallets and distributes XP to individual users based on gameplay logic — the minter does not know about individual users.
+No tokens are ever minted to arbitrary users. Every mint operation flows through the reserve system described below. The **app backend** holds funded reserve wallets and distributes XP to individual users based on gameplay logic. The minter does not know about individual users.
 
 ## Concepts
 
@@ -69,7 +69,7 @@ Mint events older than 1 year are pruned automatically after every mint.
 
 ### Auto-rebalance timer
 
-The minter runs a recurring timer (1-hour interval) that automatically rebalances all reserves. On each tick, the timer calls `rebalance_all` internally — the same logic used by the `rebalance_all_reserves` admin endpoint.
+The minter runs a recurring timer (1-hour interval) that automatically rebalances all reserves. On each tick, the timer calls `rebalance_all` internally: the same logic used by the `rebalance_all_reserves` admin endpoint.
 
 Key properties:
 
@@ -136,7 +136,7 @@ The entire canister state (reserves, counters, policy, idempotency map) is Candi
 
 ## Duplicate account guard
 
-Each reserve must have a unique ICRC-1 account (principal + optional subaccount). The minter rejects `add_reserve` calls with an account that is already registered (`ReserveAccountAlreadyExists`). Accounts are immutable after creation — `update_reserve` does not expose an `account` field, so a reserve's account can never be changed to collide with another.
+Each reserve must have a unique ICRC-1 account (principal + optional subaccount). The minter rejects `add_reserve` calls with an account that is already registered (`ReserveAccountAlreadyExists`). Accounts are immutable after creation: `update_reserve` does not expose an `account` field, so a reserve's account can never be changed to collide with another.
 
 The `init.reserves.sh` script also validates uniqueness before making any `dfx` calls, catching duplicates early at the configuration level.
 

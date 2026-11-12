@@ -13,7 +13,7 @@ const REBALANCE_INTERVAL: Duration = Duration::from_secs(3600);
 /// IC clears all timers on upgrade, so `post_upgrade` must re-arm.
 ///
 /// Uses `set_timer_interval_serial`: if a rebalance cycle is still running
-/// when the next tick fires, the new invocation is skipped — no concurrent
+/// when the next tick fires, the new invocation is skipped: no concurrent
 /// executions, no manual reentrancy guard needed.
 pub(crate) fn start_rebalance_timer() {
     set_timer_interval_serial(REBALANCE_INTERVAL, async || {
